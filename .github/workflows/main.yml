@@ -44,9 +44,9 @@ jobs:
         python build.py
       shell: pwsh
         
-    - name: Upload release artifacts
+    - name: Upload debug artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: release-build
+        name: debug-build
         path: dist/*.zip
         retention-days: 90
