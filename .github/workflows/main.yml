@@ -19,6 +19,11 @@ jobs:
       with:
         python-version: '3.11'
         cache: 'pip'
+
+    - name: Install UPX
+      uses: crazy-max/ghaction-upx@v3
+      with:
+        install-only: true
         
     - name: Cache build dependencies
       uses: actions/cache@v4
