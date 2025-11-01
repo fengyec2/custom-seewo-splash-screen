@@ -73,22 +73,6 @@ jobs:
           python3 build.py
         shell: bash
 
-      - name: Archive artifacts
-        # 将各平台构建产物打包（假设 build.py 输出到 dist/）
-        if: always()
-        run: |
-          # Windows 和 Linux 下的压缩命令不同
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            # 使用 PowerShell 的 Compress-Archive 在 Windows 上打包
-            pwsh -c "if (Test-Path 'dist') { Compress-Archive -Path dist\\* -DestinationPath dist\\build-${{ matrix.os }}.zip -Force }"
-          else
-            # Linux 打包成 build-ubuntu-latest.zip（或使用 runner.os 变量）
-            if [ -d dist ]; then
-              zip -r dist/build-${{ matrix.os }}.zip dist/*
-            fi
-          fi
-        shell: bash
-
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
