@@ -40,19 +40,30 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-build-
 
-      - name: Install dependencies (platform-specific shell)
+      - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
           python -m pip install --upgrade pip
-          pip install PyQt6 pyinstaller
+          pip install pyinstaller
           if (Test-Path requirements.txt) { pip install -r requirements.txt }
         shell: pwsh
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libtiff5 libxcb1 libxcb-icccm4 libxcb-keysyms1 libxcb-render-util0 \
+            libxcb-cursor0 libxcb-xkb1 libxcb-shape0 libxkbcommon-x11-0 libxcb-image0 \
+            libxcb-util1 libx11-xcb1 libgl1-mesa-glx libglu1-mesa libxcb-glx0 libxrender1 \
+            libxrandr2 libxi6
+        shell: bash
 
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           python -m pip install --upgrade pip
-          pip install PyQt6 pyinstaller
+          pip install pyinstaller
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         shell: bash
 
