@@ -8,50 +8,91 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
-      
-    - name: Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.11'
-        cache: 'pip'
+    # 并行在 windows 和 linux 上构建；如需 macOS 可把 macos-latest 加入列表
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        # 如果需要多个 Python 版本可扩展 python-version: [3.11, 3.10]
+      fail-fast: false
 
-    - name: Install UPX
-      uses: crazy-max/ghaction-upx@v3
-      with:
-        install-only: true
-        
-    - name: Cache build dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~\AppData\Local\pip\Cache
-          build
-        key: ${{ runner.os }}-build-${{ hashFiles('**/requirements.txt', '**/*.py') }}
-        restore-keys: |
-          ${{ runner.os }}-build-
-          
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install PyQt6 pyinstaller
-        if (Test-Path requirements.txt) { pip install -r requirements.txt }
-        
-    - name: Build application
-      run: |
-        $env:PYTHONIOENCODING="utf-8"
-        $env:PYTHONUTF8="1"
-        chcp 65001
-        python build.py
-      shell: pwsh
-        
-    - name: Upload debug artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: debug-build
-        path: dist/*.zip
-        retention-days: 90
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install UPX (for compressing executables)
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+
+      - name: Cache build dependencies (platform specific path)
+        uses: actions/cache@v4
+        with:
+          # Windows 与 Linux 的 pip cache 路径不同，使用 matrix 条件
+          path: ${{ runner.os == 'Windows' && '~\\AppData\\Local\\pip\\Cache' || '~/.cache/pip' }}
+          key: ${{ runner.os }}-build-${{ hashFiles('**/requirements.txt', '**/*.py') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+
+      - name: Install dependencies (platform-specific shell)
+        if: runner.os == 'Windows'
+        run: |
+          python -m pip install --upgrade pip
+          pip install PyQt6 pyinstaller
+          if (Test-Path requirements.txt) { pip install -r requirements.txt }
+        shell: pwsh
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          python -m pip install --upgrade pip
+          pip install PyQt6 pyinstaller
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        shell: bash
+
+      - name: Build application (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          $env:PYTHONIOENCODING="utf-8"
+          $env:PYTHONUTF8="1"
+          chcp 65001
+          python build.py
+        shell: pwsh
+
+      - name: Build application (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          export PYTHONIOENCODING="utf-8"
+          export PYTHONUTF8=1
+          python3 build.py
+        shell: bash
+
+      - name: Archive artifacts
+        # 将各平台构建产物打包（假设 build.py 输出到 dist/）
+        if: always()
+        run: |
+          # Windows 和 Linux 下的压缩命令不同
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            # 使用 PowerShell 的 Compress-Archive 在 Windows 上打包
+            pwsh -c "if (Test-Path 'dist') { Compress-Archive -Path dist\\* -DestinationPath dist\\build-${{ matrix.os }}.zip -Force }"
+          else
+            # Linux 打包成 build-ubuntu-latest.zip（或使用 runner.os 变量）
+            if [ -d dist ]; then
+              zip -r dist/build-${{ matrix.os }}.zip dist/*
+            fi
+          fi
+        shell: bash
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-build-${{ matrix.os }}
+          path: |
+            dist/*.zip
+          retention-days: 90
