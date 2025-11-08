@@ -1,11 +1,12 @@
 """设置界面"""
 
 import webbrowser
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget
 from qfluentwidgets import (
     FluentIcon as FIF, SettingCardGroup, OptionsSettingCard, 
     SwitchSettingCard, PrimaryPushSettingCard, qconfig, setTheme, Theme,
-    TitleLabel, VBoxLayout
+    TitleLabel, ScrollArea, ExpandLayout
 )
 
 from core.config_manager import ConfigManager
@@ -13,46 +14,62 @@ from core.app_info import get_version, get_app_name, get_repository
 from .dialogs import MessageHelper
 
 
-class SettingsInterface(QWidget):
+class SettingsInterface(ScrollArea):
     """设置界面"""
     
     def __init__(self, parent=None):
-        super().__init__(parent)
+        super().__init__(parent=parent)
         self.parent_window = parent
         self.config_manager = ConfigManager()
+        
+        # 创建滚动容器
+        self.scrollWidget = QWidget()
+        self.expandLayout = ExpandLayout(self.scrollWidget)
+        
         self._init_ui()
         self._bind_settings_to_config()
     
     def _init_ui(self):
         """初始化设置界面UI"""
+        # 设置滚动区域属性
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setViewportMargins(0, 80, 0, 20)
+        self.setWidget(self.scrollWidget)
+        self.setWidgetResizable(True)
         self.setObjectName("settingsInterface")
         
-        # 创建布局
-        layout = VBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        # 设置滚动容器对象名
+        self.scrollWidget.setObjectName('scrollWidget')
         
-        # 标题
-        title_label = TitleLabel("设置")
-        title_label.setStyleSheet("font-size: 28px; font-weight: bold;")
-        layout.addWidget(title_label)
+        # 标题 - 使用绝对定位
+        self.settingLabel = TitleLabel("设置", self)
+        self.settingLabel.setObjectName('settingLabel')
+        self.settingLabel.move(36, 30)
         
         # 创建设置卡片组
         self._create_appearance_group()
         self._create_behavior_group()
         self._create_about_group()
         
-        # 添加到布局
-        layout.addWidget(self.appearance_group)
-        layout.addWidget(self.behavior_group)
-        layout.addWidget(self.about_group)
-        layout.addStretch(1)  # 添加弹性空间，让内容顶部对齐
+        # 初始化布局
+        self._init_layout()
+    
+    def _init_layout(self):
+        """初始化布局"""
+        # 设置布局参数
+        self.expandLayout.setSpacing(28)
+        self.expandLayout.setContentsMargins(36, 10, 36, 0)
+        
+        # 添加设置组到布局
+        self.expandLayout.addWidget(self.appearance_group)
+        self.expandLayout.addWidget(self.behavior_group)
+        self.expandLayout.addWidget(self.about_group)
     
     def _create_appearance_group(self):
         """创建外观设置组"""
-        self.appearance_group = SettingCardGroup("外观设置", self)
+        self.appearance_group = SettingCardGroup("外观设置", self.scrollWidget)
         
-        # 主题切换卡片
+        # 主题切换卡片 - 直接绑定配置项
         self.theme_card = OptionsSettingCard(
             qconfig.themeMode,
             FIF.BRUSH,
@@ -61,12 +78,16 @@ class SettingsInterface(QWidget):
             texts=["浅色", "深色", "跟随系统设置"],
             parent=self.appearance_group
         )
+        
+        # 连接主题变化信号
+        qconfig.themeChanged.connect(setTheme)
         self.theme_card.optionChanged.connect(self._on_theme_changed)
+        
         self.appearance_group.addSettingCard(self.theme_card)
     
     def _create_behavior_group(self):
         """创建行为设置组"""
-        self.behavior_group = SettingCardGroup("行为设置", self)
+        self.behavior_group = SettingCardGroup("行为设置", self.scrollWidget)
         
         # 自动检测路径卡片
         self.auto_detect_card = SwitchSettingCard(
@@ -79,7 +100,7 @@ class SettingsInterface(QWidget):
     
     def _create_about_group(self):
         """创建关于设置组"""
-        self.about_group = SettingCardGroup("关于", self)
+        self.about_group = SettingCardGroup("关于", self.scrollWidget)
         
         # 关于卡片
         self.about_card = PrimaryPushSettingCard(
@@ -100,25 +121,6 @@ class SettingsInterface(QWidget):
         self.auto_detect_card.checkedChanged.connect(
             self.config_manager.set_auto_detect_on_startup
         )
-        
-        # 设置主题卡片的初始值
-        self._set_initial_theme()
-    
-    def _set_initial_theme(self):
-        """设置主题卡片的初始值"""
-        theme_mode = self.config_manager.get_theme_mode()
-        theme_index_map = {
-            "light": 0,
-            "dark": 1, 
-            "auto": 2
-        }
-        initial_index = theme_index_map.get(theme_mode, 2)
-        # 注意：根据OptionsSettingCard的API，可能需要调整设置初始值的方法
-        try:
-            self.theme_card.setCurrentIndex(initial_index)
-        except AttributeError:
-            # 如果没有setCurrentIndex方法，可能需要其他方式设置
-            pass
     
     def _on_theme_changed(self, item):
         """主题切换事件"""
@@ -132,9 +134,6 @@ class SettingsInterface(QWidget):
         }
         
         theme_name, config_value = theme_config_map.get(selected_theme, ("未知", "auto"))
-        
-        # 应用主题
-        setTheme(selected_theme)
         
         # 保存到配置文件
         self.config_manager.set_theme_mode(config_value)
