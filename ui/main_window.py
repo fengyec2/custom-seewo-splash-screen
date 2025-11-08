@@ -4,7 +4,7 @@ import os
 from PyQt6.QtWidgets import QVBoxLayout, QWidget
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QTimer
-from qfluentwidgets import FluentWindow, FluentIcon as FIF, ProgressBar, NavigationItemPosition
+from qfluentwidgets import FluentWindow, FluentIcon as FIF, IndeterminateProgressBar, NavigationItemPosition
 
 from core.config_manager import ConfigManager
 from core.image_manager import ImageManager
@@ -72,7 +72,7 @@ class MainWindow(FluentWindow):
         self.path_card = PathInfoCard(self.homeInterface)
         self.image_list = ImageListWidget(self.homeInterface)
         self.action_bar = ActionBar(self.homeInterface)
-        self.progress_bar = ProgressBar(self.homeInterface)
+        self.progress_bar = IndeterminateProgressBar(self.homeInterface)
         self.progress_bar.setVisible(False)
         
         layout.addWidget(self.path_card)
@@ -271,11 +271,12 @@ class MainWindow(FluentWindow):
     def show_progress(self, message: str):
         """显示进度"""
         self.progress_bar.setVisible(True)
-        self.progress_bar.setRange(0, 0)
+        self.progress_bar.start()  # 启动不确定进度条动画
         MessageHelper.show_success(self, message, 2000)
-    
+
     def hide_progress(self):
         """隐藏进度"""
+        self.progress_bar.stop()   # 停止动画
         self.progress_bar.setVisible(False)
     
     def load_images(self):
