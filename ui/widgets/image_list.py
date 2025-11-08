@@ -58,7 +58,6 @@ class ImageCard(CardWidget):
         self.text_label = CaptionLabel(self.img_info["display_name"])
         self.text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.text_label.setWordWrap(True)
-        self.text_label.setStyleSheet("font-size: 12px;")
         
         layout.addWidget(self.image_label, 0, Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.text_label, 0, Qt.AlignmentFlag.AlignCenter)
