@@ -22,6 +22,7 @@ class SettingsInterface(ScrollArea):
         super().__init__(parent=parent)
         self.parent_window = parent
         self.config_manager = ConfigManager()
+        self._is_applying_saved_settings = False  # 添加标志
         
         # 创建滚动容器
         self.scrollWidget = QWidget()
@@ -232,14 +233,15 @@ class SettingsInterface(ScrollArea):
         if self.parent_window and hasattr(self.parent_window, 'setMicaEffectEnabled'):
             self.parent_window.setMicaEffectEnabled(enabled)
         
-        # 显示成功消息
-        status = "已启用" if enabled else "已禁用"
-        if self.parent_window:
-            MessageHelper.show_success(
-                self.parent_window,
-                f"云母效果{status}",
-                2000
-            )
+        # 只在非应用保存设置时显示消息
+        if not self._is_applying_saved_settings:
+            status = "已启用" if enabled else "已禁用"
+            if self.parent_window:
+                MessageHelper.show_success(
+                    self.parent_window,
+                    f"云母效果{status}",
+                    2000
+                )
     
     def _on_about_clicked(self):
         """关于按钮点击事件 - 跳转到GitHub"""
@@ -247,31 +249,37 @@ class SettingsInterface(ScrollArea):
     
     def apply_saved_theme(self):
         """应用保存的主题设置"""
-        # 应用主题模式
-        theme_mode = self.config_manager.get_theme_mode()
-        theme_map = {
-            "light": Theme.LIGHT,
-            "dark": Theme.DARK,
-            "auto": Theme.AUTO
-        }
-        saved_theme = theme_map.get(theme_mode, Theme.AUTO)
-        setTheme(saved_theme)
+        self._is_applying_saved_settings = True  # 设置标志
         
-        # 应用主题色（如果配置管理器支持）
         try:
-            theme_color = self.config_manager.get_theme_color()
-            if theme_color:
-                from PyQt6.QtGui import QColor
-                setThemeColor(QColor(theme_color))
-        except AttributeError:
-            # 如果配置管理器不支持主题色配置，跳过
-            pass
-        
-        # 应用云母效果（如果配置管理器支持）
-        try:
-            mica_enabled = self.config_manager.get_mica_effect()
-            if self.parent_window and hasattr(self.parent_window, 'setMicaEffectEnabled'):
-                self.parent_window.setMicaEffectEnabled(mica_enabled)
-        except AttributeError:
-            # 如果配置管理器不支持云母效果配置，跳过
-            pass
+            # 应用主题模式
+            theme_mode = self.config_manager.get_theme_mode()
+            theme_map = {
+                "light": Theme.LIGHT,
+                "dark": Theme.DARK,
+                "auto": Theme.AUTO
+            }
+            saved_theme = theme_map.get(theme_mode, Theme.AUTO)
+            setTheme(saved_theme)
+            
+            # 应用主题色（如果配置管理器支持）
+            try:
+                theme_color = self.config_manager.get_theme_color()
+                if theme_color:
+                    from PyQt6.QtGui import QColor
+                    setThemeColor(QColor(theme_color))
+            except AttributeError:
+                # 如果配置管理器不支持主题色配置，跳过
+                pass
+            
+            # 应用云母效果（现在不会显示提示消息）
+            try:
+                mica_enabled = self.config_manager.get_mica_effect()
+                # 先设置UI状态，再应用效果（这样会触发_on_mica_effect_changed但不显示消息）
+                self.mica_card.setChecked(mica_enabled)
+            except AttributeError:
+                # 如果配置管理器不支持云母效果配置，跳过
+                pass
+                
+        finally:
+            self._is_applying_saved_settings = False  # 重置标志
