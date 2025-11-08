@@ -1,10 +1,11 @@
 """设置界面"""
 
 import webbrowser
-from PyQt6.QtWidgets import QVBoxLayout, QWidget, QLabel
+from PyQt6.QtWidgets import QWidget
 from qfluentwidgets import (
     FluentIcon as FIF, SettingCardGroup, OptionsSettingCard, 
-    SwitchSettingCard, PrimaryPushSettingCard, qconfig, setTheme, Theme
+    SwitchSettingCard, PrimaryPushSettingCard, qconfig, setTheme, Theme,
+    TitleLabel, VBoxLayout
 )
 
 from core.config_manager import ConfigManager
@@ -27,12 +28,12 @@ class SettingsInterface(QWidget):
         self.setObjectName("settingsInterface")
         
         # 创建布局
-        layout = QVBoxLayout(self)
+        layout = VBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
         
         # 标题
-        title_label = QLabel("设置")
+        title_label = TitleLabel("设置")
         title_label.setStyleSheet("font-size: 28px; font-weight: bold;")
         layout.addWidget(title_label)
         
