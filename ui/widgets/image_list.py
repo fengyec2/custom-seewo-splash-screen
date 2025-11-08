@@ -1,8 +1,8 @@
 import os
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QDragEnterEvent, QDropEvent
-from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QSizePolicy
-from qfluentwidgets import FlowLayout, CardWidget, SingleDirectionScrollArea
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy
+from qfluentwidgets import FlowLayout, CardWidget, SingleDirectionScrollArea, CaptionLabel
 
 
 class ImageCard(CardWidget):
@@ -27,7 +27,7 @@ class ImageCard(CardWidget):
         layout.setSpacing(8)
         
         # 图片标签
-        self.image_label = QLabel()
+        self.image_label = CaptionLabel()
         self.image_label.setFixedSize(140, 140)
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_label.setScaledContents(False)
@@ -55,7 +55,7 @@ class ImageCard(CardWidget):
                 self.image_label.setPixmap(scaled_pixmap)
         
         # 文字标签
-        self.text_label = QLabel(self.img_info["display_name"])
+        self.text_label = CaptionLabel(self.img_info["display_name"])
         self.text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.text_label.setWordWrap(True)
         self.text_label.setStyleSheet("font-size: 12px;")
