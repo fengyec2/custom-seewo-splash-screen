@@ -84,7 +84,7 @@ class SettingsInterface(QWidget):
         # 关于卡片
         self.about_card = PrimaryPushSettingCard(
             "访问项目",
-            FIF.LINK,
+            FIF.GITHUB,
             f"关于 {get_app_name()}",
             f"版本 {get_version()}",
             self.about_group
