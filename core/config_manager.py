@@ -55,7 +55,9 @@ class ConfigManager:
             "last_selected_image": "",
             "custom_images": [],
             "auto_detect_on_startup": True,
-            "theme_mode": "auto"  # 主题模式: light, dark, auto
+            "theme_mode": "auto",  # 主题模式: light, dark, auto
+            "theme_color": "#009FAA",  # 默认主题色（QFluentWidgets 蓝色）
+            "mica_effect": True  # 云母效果（默认开启）
         }
     
     def get_target_path(self):
@@ -123,6 +125,46 @@ class ConfigManager:
         else:
             print(f"无效的主题模式: {theme_mode}")
     
+    def get_theme_color(self):
+        """获取主题色
+        
+        Returns:
+            str: 十六进制颜色值，如 "#0078D4"
+        """
+        return self.config.get("theme_color", "#009FAA")
+    
+    def set_theme_color(self, color):
+        """设置主题色
+        
+        Args:
+            color (str): 十六进制颜色值，如 "#0078D4"
+        """
+        if isinstance(color, str) and (color.startswith("#") and len(color) == 7):
+            self.config["theme_color"] = color
+            self.save()
+        else:
+            print(f"无效的颜色格式: {color}，应为十六进制格式如 #0078D4")
+    
+    def get_mica_effect(self):
+        """获取云母效果设置
+        
+        Returns:
+            bool: 是否启用云母效果
+        """
+        return self.config.get("mica_effect", False)
+    
+    def set_mica_effect(self, enabled):
+        """设置云母效果
+        
+        Args:
+            enabled (bool): 是否启用云母效果
+        """
+        if isinstance(enabled, bool):
+            self.config["mica_effect"] = enabled
+            self.save()
+        else:
+            print(f"云母效果设置必须为布尔值，收到: {type(enabled)}")
+    
     def get_last_selected_image(self):
         """获取最后选中的图片"""
         return self.config.get("last_selected_image", "")
@@ -161,3 +203,38 @@ class ConfigManager:
                     img["filename"] = new_filename
                     break
             self.save()
+    
+    def reset_appearance_settings(self):
+        """重置外观设置到默认值"""
+        default = self.default_config()
+        self.config["theme_mode"] = default["theme_mode"]
+        self.config["theme_color"] = default["theme_color"]
+        self.config["mica_effect"] = default["mica_effect"]
+        self.save()
+    
+    def export_settings(self):
+        """导出设置（返回配置字典的副本）"""
+        return self.config.copy()
+    
+    def import_settings(self, settings_dict):
+        """导入设置
+        
+        Args:
+            settings_dict (dict): 要导入的设置字典
+        
+        Returns:
+            bool: 导入是否成功
+        """
+        try:
+            # 验证必要的字段
+            valid_keys = set(self.default_config().keys())
+            imported_keys = set(settings_dict.keys())
+            
+            # 只导入有效的配置项
+            for key in imported_keys.intersection(valid_keys):
+                self.config[key] = settings_dict[key]
+            
+            return self.save()
+        except Exception as e:
+            print(f"导入设置失败: {e}")
+            return False

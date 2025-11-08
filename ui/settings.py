@@ -6,7 +6,8 @@ from PyQt6.QtWidgets import QWidget
 from qfluentwidgets import (
     FluentIcon as FIF, SettingCardGroup, OptionsSettingCard, 
     SwitchSettingCard, PrimaryPushSettingCard, qconfig, setTheme, Theme,
-    TitleLabel, ScrollArea, ExpandLayout
+    TitleLabel, ScrollArea, ExpandLayout, ColorSettingCard, setThemeColor,
+    CustomColorSettingCard
 )
 
 from core.config_manager import ConfigManager
@@ -80,11 +81,34 @@ class SettingsInterface(ScrollArea):
             parent=self.appearance_group
         )
         
-        # 连接主题变化信号
+        # 自定义主题色卡片
+        self.custom_color_card = CustomColorSettingCard(
+            qconfig.themeColor,
+            FIF.BRUSH,
+            "自定义主题色",
+            "选择你喜欢的主题色",
+            parent=self.appearance_group
+        )
+        
+        # 云母效果卡片 - 仅在Windows 11上可用
+        self.mica_card = SwitchSettingCard(
+            FIF.TRANSPARENT,
+            "云母效果",
+            "应用半透明到窗口和表面",
+            parent=self.appearance_group,
+            configItem=None  # 不使用自动绑定
+        )
+        
+        # 绑定信号
         qconfig.themeChanged.connect(setTheme)
         self.theme_card.optionChanged.connect(self._on_theme_changed)
+        self.custom_color_card.colorChanged.connect(self._on_custom_color_changed)
+        self.mica_card.checkedChanged.connect(self._on_mica_effect_changed)
         
+        # 添加到设置组
         self.appearance_group.addSettingCard(self.theme_card)
+        self.appearance_group.addSettingCard(self.custom_color_card)
+        self.appearance_group.addSettingCard(self.mica_card)
     
     def _create_behavior_group(self):
         """创建行为设置组"""
@@ -122,6 +146,14 @@ class SettingsInterface(ScrollArea):
         self.auto_detect_card.checkedChanged.connect(
             self.config_manager.set_auto_detect_on_startup
         )
+        
+        # 绑定云母效果设置（如果配置管理器支持）
+        try:
+            mica_enabled = self.config_manager.get_mica_effect()
+            self.mica_card.setChecked(mica_enabled)
+        except AttributeError:
+            # 如果配置管理器不支持云母效果，使用默认值
+            self.mica_card.setChecked(False)
     
     def _on_theme_changed(self, item):
         """主题切换事件"""
@@ -147,12 +179,75 @@ class SettingsInterface(ScrollArea):
                 2000
             )
     
+    def _on_theme_color_changed(self, color):
+        """主题色变化事件"""
+        # 设置全局主题色
+        setThemeColor(color)
+        
+        # 保存到配置文件（如果配置管理器支持）
+        try:
+            self.config_manager.set_theme_color(color.name())
+        except AttributeError:
+            # 如果配置管理器不支持主题色配置，跳过
+            pass
+        
+        # 显示成功消息
+        if self.parent_window:
+            MessageHelper.show_success(
+                self.parent_window,
+                "主题色已更新",
+                2000
+            )
+    
+    def _on_custom_color_changed(self, color):
+        """自定义主题色变化事件"""
+        # 设置全局主题色
+        setThemeColor(color)
+        
+        # 保存到配置文件（如果配置管理器支持）
+        try:
+            self.config_manager.set_theme_color(color.name())
+        except AttributeError:
+            # 如果配置管理器不支持主题色配置，跳过
+            pass
+        
+        # 显示成功消息
+        if self.parent_window:
+            MessageHelper.show_success(
+                self.parent_window,
+                f"自定义主题色已设置为 {color.name()}",
+                2000
+            )
+    
+    def _on_mica_effect_changed(self, enabled):
+        """云母效果切换事件"""
+        # 保存到配置文件（如果配置管理器支持）
+        try:
+            self.config_manager.set_mica_effect(enabled)
+        except AttributeError:
+            # 如果配置管理器不支持云母效果配置，跳过
+            pass
+        
+        # 应用云母效果到主窗口
+        if self.parent_window and hasattr(self.parent_window, 'setMicaEffectEnabled'):
+            self.parent_window.setMicaEffectEnabled(enabled)
+        
+        # 显示成功消息
+        status = "已启用" if enabled else "已禁用"
+        if self.parent_window:
+            MessageHelper.show_success(
+                self.parent_window,
+                f"云母效果{status}",
+                2000
+            )
+    
     def _on_about_clicked(self):
         """关于按钮点击事件 - 跳转到GitHub"""
         webbrowser.open(get_repository())
     
     def apply_saved_theme(self):
         """应用保存的主题设置"""
+        # 应用主题模式
         theme_mode = self.config_manager.get_theme_mode()
         theme_map = {
             "light": Theme.LIGHT,
@@ -161,3 +256,22 @@ class SettingsInterface(ScrollArea):
         }
         saved_theme = theme_map.get(theme_mode, Theme.AUTO)
         setTheme(saved_theme)
+        
+        # 应用主题色（如果配置管理器支持）
+        try:
+            theme_color = self.config_manager.get_theme_color()
+            if theme_color:
+                from PyQt6.QtGui import QColor
+                setThemeColor(QColor(theme_color))
+        except AttributeError:
+            # 如果配置管理器不支持主题色配置，跳过
+            pass
+        
+        # 应用云母效果（如果配置管理器支持）
+        try:
+            mica_enabled = self.config_manager.get_mica_effect()
+            if self.parent_window and hasattr(self.parent_window, 'setMicaEffectEnabled'):
+                self.parent_window.setMicaEffectEnabled(mica_enabled)
+        except AttributeError:
+            # 如果配置管理器不支持云母效果配置，跳过
+            pass
