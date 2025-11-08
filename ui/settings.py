@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QWidget
 from qfluentwidgets import (
     FluentIcon as FIF, SettingCardGroup, OptionsSettingCard, 
     SwitchSettingCard, PrimaryPushSettingCard, qconfig, setTheme, Theme,
-    TitleLabel, ScrollArea, ExpandLayout, ColorSettingCard, setThemeColor,
+    TitleLabel, ScrollArea, ExpandLayout, setThemeColor,
     CustomColorSettingCard
 )
 
