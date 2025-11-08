@@ -2,7 +2,7 @@ import os
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QDragEnterEvent, QDropEvent
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy
-from qfluentwidgets import FlowLayout, CardWidget, SingleDirectionScrollArea, CaptionLabel
+from qfluentwidgets import FlowLayout, CardWidget, SingleDirectionScrollArea, CaptionLabel, ToolTipFilter, ToolTipPosition
 
 
 class ImageCard(CardWidget):
@@ -62,9 +62,8 @@ class ImageCard(CardWidget):
         layout.addWidget(self.image_label, 0, Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.text_label, 0, Qt.AlignmentFlag.AlignCenter)
         
-        # 设置工具提示
-        img_type = '预设' if self.img_info['type'] == 'preset' else '自定义'
-        self.setToolTip(f"类型: {img_type}\n文件名: {self.img_info['filename']}")
+        # 设置工具提示 - 使用官方最佳实践
+        self._setup_tooltip()
         
         # 设置鼠标光标
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -74,6 +73,25 @@ class ImageCard(CardWidget):
         
         # 更新样式
         self._update_style()
+    
+    def _setup_tooltip(self):
+        """设置工具提示 - 按照官方最佳实践"""
+        # 构建工具提示文本
+        img_type = '预设' if self.img_info['type'] == 'preset' else '自定义'
+        tooltip_text = f"类型: {img_type}\n文件名: {self.img_info['filename']}"
+        
+        # 设置工具提示文本
+        self.setToolTip(tooltip_text)
+        
+        # 安装 ToolTipFilter 事件过滤器
+        # 参数: (目标控件, 延迟时间ms, 显示位置)
+        # 根据卡片位置智能选择显示位置，这里默认使用 TOP
+        tooltip_filter = ToolTipFilter(self, 300, ToolTipPosition.TOP)
+        self.installEventFilter(tooltip_filter)
+        
+        # 设置工具提示持续时间（可选）
+        # self.setToolTipDuration(3000)  # 3秒后自动消失
+        # self.setToolTipDuration(-1)    # 不自动消失，直到鼠标移开
     
     def _on_clicked(self):
         """处理父类的 clicked 信号"""
@@ -304,7 +322,7 @@ class ImageListWidget(QWidget):
     def select_image_by_filename(self, filename: str):
         """根据文件名选中图片
         
-        Args:
+      Args:
             filename: 要选中的图片文件名
         """
         for card in self.image_cards:
