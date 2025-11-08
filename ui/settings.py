@@ -37,6 +37,7 @@ class SettingsInterface(ScrollArea):
         self.setWidget(self.scrollWidget)
         self.setWidgetResizable(True)
         self.setObjectName("settingsInterface")
+        self.enableTransparentBackground()
         
         # 设置滚动容器对象名
         self.scrollWidget.setObjectName('scrollWidget')
