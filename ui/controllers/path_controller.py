@@ -1,9 +1,44 @@
 """路径管理控制器 - 处理所有路径相关的业务逻辑"""
 
-from PyQt6.QtWidgets import QWidget, QInputDialog
+from PyQt6.QtWidgets import QWidget
+from qfluentwidgets import MessageBoxBase, SubtitleLabel, ComboBox, BodyLabel
 from core.config_manager import ConfigManager
 from utils.path_detector import PathDetector
 import os
+
+class TargetPathSelectionDialog(MessageBoxBase):
+    """目标路径选择对话框"""
+    
+    def __init__(self, paths: list[str], parent=None):
+        super().__init__(parent)
+        self.paths = paths
+        
+        self.titleLabel = SubtitleLabel('选择目标路径')
+        self.infoLabel = BodyLabel(
+            f'检测到 {len(paths)} 个可能的启动图片路径\n'
+            '请选择要使用的路径：'
+        )
+        self.pathComboBox = ComboBox()
+        
+        # 添加路径选项
+        for i, path in enumerate(paths):
+            display_text = f"{i+1}. {path}"
+            self.pathComboBox.addItem(display_text, userData=path)
+        
+        # 默认选中第一个路径
+        self.pathComboBox.setCurrentIndex(0)
+        
+        # 将组件添加到布局中
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addWidget(self.infoLabel)
+        self.viewLayout.addWidget(self.pathComboBox)
+        
+        # 设置对话框的最小宽度
+        self.widget.setMinimumWidth(500)
+    
+    def get_selected_path(self) -> str:
+        """获取选择的路径"""
+        return self.pathComboBox.currentData()
 
 
 class PathController:
@@ -80,16 +115,10 @@ class PathController:
         
         # 多个路径让用户选择
         if len(paths) > 1:
-            items = [f"{i+1}. {path}" for i, path in enumerate(paths)]
-            item, ok = QInputDialog.getItem(
-                self.parent,
-                "选择目标路径",
-                f"检测到 {len(paths)} 个可能的启动图片路径,\n请选择要使用的路径:",
-                items, 0, False
-            )
-            if ok and item:
-                index = int(item.split('.')[0]) - 1
-                self.target_path = paths[index]
+            dialog = TargetPathSelectionDialog(paths, self.parent)
+            
+            if dialog.exec():
+                self.target_path = dialog.get_selected_path()
             else:
                 return False, ""
         else:
