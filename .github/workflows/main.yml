@@ -5,6 +5,26 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: '创建 Release'
+        required: false
+        default: false
+        type: boolean
+      release_tag:
+        description: 'Release 标签 (例如: v1.0.0)'
+        required: false
+        type: string
+      release_name:
+        description: 'Release 名称'
+        required: false
+        type: string
+      prerelease:
+        description: '预发布版本'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build:
@@ -92,3 +112,141 @@ jobs:
           path: |
             dist/*.zip
           retention-days: 90
+
+  # 新增的 Release 任务
+  release:
+    needs: build
+    if: github.event.inputs.create_release == 'true' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate inputs
+        run: |
+          if [[ -z "${{ github.event.inputs.release_tag }}" ]]; then
+            echo "❌ 错误: 创建 Release 时必须提供标签"
+            exit 1
+          fi
+          
+          if [[ ! "${{ github.event.inputs.release_tag }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+.*$ ]]; then
+            echo "❌ 错误: 标签格式不正确，请使用 vX.Y.Z 格式"
+            exit 1
+          fi
+          
+          if git tag --list | grep -q "^${{ github.event.inputs.release_tag }}$"; then
+            echo "❌ 错误: 标签 ${{ github.event.inputs.release_tag }} 已存在"
+            exit 1
+          fi
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Install git-cliff
+        run: |
+          curl -L https://github.com/orhun/git-cliff/releases/latest/download/git-cliff-$(uname -m)-unknown-linux-gnu.tar.gz | tar -xz
+          sudo mv git-cliff /usr/local/bin/
+
+      - name: Create tag
+        run: |
+          git tag ${{ github.event.inputs.release_tag }}
+          git push origin ${{ github.event.inputs.release_tag }}
+
+      - name: Generate changelog
+        run: |
+          # 获取上一个标签
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -2 | tail -1)
+          
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "📝 生成首个版本的完整更新日志"
+            git-cliff --tag ${{ github.event.inputs.release_tag }} --output RELEASE_NOTES.md
+          else
+            echo "📝 生成从 $PREVIOUS_TAG 到 ${{ github.event.inputs.release_tag }} 的更新日志"
+            git-cliff $PREVIOUS_TAG..${{ github.event.inputs.release_tag }} --output RELEASE_NOTES.md
+          fi
+          
+          # 更新完整的 CHANGELOG
+          git-cliff --output CHANGELOG.md
+          
+          echo "📋 生成的 Release 说明："
+          cat RELEASE_NOTES.md
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          
+          # 重命名构建产物以便识别
+          find ./artifacts -name "*.zip" -type f | while read file; do
+            dir_name=$(basename $(dirname "$file"))
+            file_name=$(basename "$file")
+            
+            # 从目录名提取操作系统信息
+            if [[ "$dir_name" == *"windows"* ]]; then
+              os_suffix="windows"
+            elif [[ "$dir_name" == *"ubuntu"* ]]; then
+              os_suffix="linux"
+            elif [[ "$dir_name" == *"macos"* ]]; then
+              os_suffix="macos"
+            else
+              os_suffix="unknown"
+            fi
+            
+            # 为文件添加版本和平台后缀
+            version_tag="${{ github.event.inputs.release_tag }}"
+            new_name="${file_name%.*}-${version_tag}-${os_suffix}.zip"
+            
+            cp "$file" "release-assets/$new_name"
+            echo "📦 准备发布包: $new_name"
+          done
+          
+          # 显示所有准备发布的文件
+          echo "🎁 所有发布包:"
+          ls -la release-assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.release_tag }}
+          name: ${{ github.event.inputs.release_name || github.event.inputs.release_tag }}
+          body_path: RELEASE_NOTES.md
+          draft: true
+          prerelease: ${{ github.event.inputs.prerelease }}
+          files: |
+            release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update CHANGELOG in repository
+        run: |
+          if [ -n "$(git status --porcelain CHANGELOG.md)" ]; then
+            git add CHANGELOG.md
+            git commit -m "docs: 更新 CHANGELOG.md for ${{ github.event.inputs.release_tag }}"
+            git push origin main
+            echo "✅ CHANGELOG.md 已更新并提交"
+          else
+            echo "ℹ️ CHANGELOG.md 无变化，跳过提交"
+          fi
+
+      - name: Release summary
+        run: |
+          echo "🎉 Release 创建成功!"
+          echo "📋 详细信息:"
+          echo "  标签: ${{ github.event.inputs.release_tag }}"
+          echo "  名称: ${{ github.event.inputs.release_name || github.event.inputs.release_tag }}"
+          echo "  状态: 草稿 (需要手动发布)"
+          echo "  预发布: ${{ github.event.inputs.prerelease }}"
+          echo "  构建包数量: $(ls -1 release-assets/ | wc -l)"
+          echo "🔗 查看地址: https://github.com/${{ github.repository }}/releases/tag/${{ github.event.inputs.release_tag }}"
