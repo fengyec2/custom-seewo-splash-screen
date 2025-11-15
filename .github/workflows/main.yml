@@ -151,9 +151,9 @@ jobs:
           git config --local user.name "GitHub Action"
 
       - name: Install git-cliff
-        run: |
-          curl -L https://github.com/orhun/git-cliff/releases/latest/download/git-cliff-$(uname -m)-unknown-linux-gnu.tar.gz | tar -xz
-          sudo mv git-cliff /usr/local/bin/
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
 
       - name: Create tag
         run: |
