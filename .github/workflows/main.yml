@@ -155,29 +155,31 @@ jobs:
         with:
           tool: git-cliff
 
+      - name: Generate changelog (before creating tag)
+        run: |
+          # 获取上一个标签
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "📝 生成首个版本的完整更新日志"
+            git-cliff --unreleased --output RELEASE_NOTES.md
+          else
+            echo "📝 生成从 $PREVIOUS_TAG 到当前的更新日志"  
+            git-cliff ${PREVIOUS_TAG}..HEAD --unreleased --output RELEASE_NOTES.md
+          fi
+          
+          echo "📋 生成的 Release 说明："
+          cat RELEASE_NOTES.md
+
       - name: Create tag
         run: |
           git tag ${{ github.event.inputs.release_tag }}
           git push origin ${{ github.event.inputs.release_tag }}
 
-      - name: Generate changelog
+      - name: Update full CHANGELOG
         run: |
-          # 获取上一个标签
-          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -2 | tail -1)
-          
-          if [ -z "$PREVIOUS_TAG" ]; then
-            echo "📝 生成首个版本的完整更新日志"
-            git-cliff --tag ${{ github.event.inputs.release_tag }} --output RELEASE_NOTES.md
-          else
-            echo "📝 生成从 $PREVIOUS_TAG 到 ${{ github.event.inputs.release_tag }} 的更新日志"
-            git-cliff $PREVIOUS_TAG..${{ github.event.inputs.release_tag }} --output RELEASE_NOTES.md
-          fi
-          
-          # 更新完整的 CHANGELOG
+          # 现在生成包含新标签的完整CHANGELOG
           git-cliff --output CHANGELOG.md
-          
-          echo "📋 生成的 Release 说明："
-          cat RELEASE_NOTES.md
 
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
