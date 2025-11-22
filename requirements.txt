@@ -1,3 +1,4 @@
 PyQt6>=6.6.0
-PyQt6-Fluent-Widgets[full]>=1.5.0
+# 手动安装以指定轻量版或完整版
+# PyQt6-Fluent-Widgets[full]>=1.5.0
 Pillow>=10.0.0

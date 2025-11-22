@@ -68,6 +68,14 @@ cd custom-seewo-splash-screen
 pip install -r requirements.txt
 ```
 
+```bash
+# 安装轻量版
+pip install PyQt6-Fluent-Widgets
+
+# 安装完整版
+pip install "PyQt6-Fluent-Widgets[full]"
+```
+
 3. **运行程序**
 
 ```bash

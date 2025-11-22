@@ -28,12 +28,12 @@ on:
 
 jobs:
   build:
-    # 并行在 windows 和 linux 上构建；如需 macOS 可把 macos-latest 加入列表
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
-        # 如果需要多个 Python 版本可扩展 python-version: [3.11, 3.10]
+        # 添加 qfluentwidgets 版本选择
+        qfluentwidgets-version: [lite, full]
       fail-fast: false
 
     steps:
@@ -54,19 +54,11 @@ jobs:
       - name: Cache build dependencies (platform specific path)
         uses: actions/cache@v4
         with:
-          # Windows 与 Linux 的 pip cache 路径不同，使用 matrix 条件
           path: ${{ runner.os == 'Windows' && '~\\AppData\\Local\\pip\\Cache' || '~/.cache/pip' }}
-          key: ${{ runner.os }}-build-${{ hashFiles('**/requirements.txt', '**/*.py') }}
+          key: ${{ runner.os }}-${{ matrix.qfluentwidgets-version }}-build-${{ hashFiles('**/requirements.txt', '**/*.py') }}
           restore-keys: |
+            ${{ runner.os }}-${{ matrix.qfluentwidgets-version }}-build-
             ${{ runner.os }}-build-
-
-      - name: Install dependencies (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
-          if (Test-Path requirements.txt) { pip install -r requirements.txt }
-        shell: pwsh
 
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
@@ -80,7 +72,15 @@ jobs:
             libxkbcommon-x11-0
         shell: bash
 
-      - name: Install dependencies (Linux)
+      - name: Install base dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          if (Test-Path requirements.txt) { pip install -r requirements.txt }
+        shell: pwsh
+
+      - name: Install base dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           python -m pip install --upgrade pip
@@ -88,11 +88,30 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         shell: bash
 
+      # 新增：安装 qfluentwidgets
+      - name: Install QFluentWidgets (Lite Version)
+        if: matrix.qfluentwidgets-version == 'lite'
+        run: |
+          pip install PyQt6-Fluent-Widgets
+          echo "📦 已安装 QFluentWidgets 轻量版"
+
+      - name: Install QFluentWidgets (Full Version)
+        if: matrix.qfluentwidgets-version == 'full'
+        run: |
+          pip install "PyQt6-Fluent-Widgets[full]"
+          echo "📦 已安装 QFluentWidgets 完整版"
+
+      - name: Verify QFluentWidgets installation
+        run: |
+          python -c "import qfluentwidgets; print(f'QFluentWidgets 版本: {qfluentwidgets.__version__}')"
+          python -c "import qfluentwidgets; print(f'安装类型: ${{ matrix.qfluentwidgets-version }}')"
+
       - name: Build application (Windows)
         if: runner.os == 'Windows'
         run: |
           $env:PYTHONIOENCODING="utf-8"
           $env:PYTHONUTF8="1"
+          $env:QFLUENTWIDGETS_VERSION="${{ matrix.qfluentwidgets-version }}"
           chcp 65001
           python build.py
         shell: pwsh
@@ -102,18 +121,20 @@ jobs:
         run: |
           export PYTHONIOENCODING="utf-8"
           export PYTHONUTF8=1
+          export QFLUENTWIDGETS_VERSION="${{ matrix.qfluentwidgets-version }}"
           python3 build.py
         shell: bash
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: debug-build-${{ matrix.os }}
+          # 修改artifact名称，包含版本信息
+          name: debug-build-${{ matrix.os }}-${{ matrix.qfluentwidgets-version }}
           path: |
             dist/*.zip
           retention-days: 90
 
-  # 新增的 Release 任务
+  # Release 任务
   release:
     needs: build
     if: github.event.inputs.create_release == 'true' && github.event_name == 'workflow_dispatch'
@@ -157,7 +178,6 @@ jobs:
 
       - name: Generate changelog (before creating tag)
         run: |
-          # 获取上一个标签
           PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
           
           if [ -z "$PREVIOUS_TAG" ]; then
@@ -178,7 +198,6 @@ jobs:
 
       - name: Update full CHANGELOG
         run: |
-          # 现在生成包含新标签的完整CHANGELOG
           git-cliff --output CHANGELOG.md
 
       - name: Download all build artifacts
@@ -190,7 +209,7 @@ jobs:
         run: |
           mkdir -p release-assets
           
-          # 重命名构建产物以便识别
+          # 重命名构建产物以便识别（包含 qfluentwidgets 版本信息）
           find ./artifacts -name "*.zip" -type f | while read file; do
             dir_name=$(basename $(dirname "$file"))
             file_name=$(basename "$file")
@@ -206,9 +225,18 @@ jobs:
               os_suffix="unknown"
             fi
             
-            # 为文件添加版本和平台后缀
+            # 提取 qfluentwidgets 版本信息
+            if [[ "$dir_name" == *"lite"* ]]; then
+              qfw_suffix="lite"
+            elif [[ "$dir_name" == *"full"* ]]; then
+              qfw_suffix="full"
+            else
+              qfw_suffix="unknown"
+            fi
+            
+            # 为文件添加版本、平台和QFluentWidgets版本后缀
             version_tag="${{ github.event.inputs.release_tag }}"
-            new_name="${file_name%.*}-${version_tag}-${os_suffix}.zip"
+            new_name="${file_name%.*}-${version_tag}-${os_suffix}-${qfw_suffix}.zip"
             
             cp "$file" "release-assets/$new_name"
             echo "📦 准备发布包: $new_name"
@@ -217,6 +245,14 @@ jobs:
           # 显示所有准备发布的文件
           echo "🎁 所有发布包:"
           ls -la release-assets/
+          
+          # 统计构建包数量
+          echo "📊 构建统计:"
+          echo "  总计: $(ls -1 release-assets/ | wc -l) 个构建包"
+          echo "  轻量版: $(ls -1 release-assets/ | grep -c 'lite') 个"
+          echo "  完整版: $(ls -1 release-assets/ | grep -c 'full') 个"
+          echo "  Windows: $(ls -1 release-assets/ | grep -c 'windows') 个"
+          echo "  Linux: $(ls -1 release-assets/ | grep -c 'linux') 个"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -251,4 +287,6 @@ jobs:
           echo "  状态: 草稿 (需要手动发布)"
           echo "  预发布: ${{ github.event.inputs.prerelease }}"
           echo "  构建包数量: $(ls -1 release-assets/ | wc -l)"
+          echo "  - Windows (lite + full): $(ls -1 release-assets/ | grep -c 'windows')"
+          echo "  - Linux (lite + full): $(ls -1 release-assets/ | grep -c 'linux')"
           echo "🔗 查看地址: https://github.com/${{ github.repository }}/releases/tag/${{ github.event.inputs.release_tag }}"
