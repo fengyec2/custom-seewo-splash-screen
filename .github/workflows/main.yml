@@ -103,8 +103,8 @@ jobs:
 
       - name: Verify QFluentWidgets installation
         run: |
-          python -c "import qfluentwidgets; print(f'QFluentWidgets 版本: {qfluentwidgets.__version__}')"
-          python -c "import qfluentwidgets; print(f'安装类型: ${{ matrix.qfluentwidgets-version }}')"
+          python -c "import qfluentwidgets; print('QFluentWidgets version:', qfluentwidgets.__version__)"
+          python -c "print('Installation type: ${{ matrix.qfluentwidgets-version }}')"
 
       - name: Build application (Windows)
         if: runner.os == 'Windows'
