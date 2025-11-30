@@ -7,7 +7,7 @@
 ![Python](https://img.shields.io/badge/python-3.8+-brightgreen.svg)
 ![PyQt6](https://img.shields.io/badge/PyQt-6-green.svg)
 
-一个用于自定义希沃白板启动图的简单工具
+一个用于自定义 希沃白板/WPS Office 启动图的简单工具
 
 [功能特性](#功能特性) • [安装使用](#安装使用) • [构建](#构建) • [常见问题](#常见问题) • [许可证](#许可证)
 
@@ -17,7 +17,7 @@
 
 ## 简介
 
-SeewoSplash 是一个 Fluent 风格的图形化工具，允许你自定义希沃白板的启动图。告别单调的默认启动图，让你的希沃白板展现个性！
+SeewoSplash 是一个 Fluent 风格的图形化工具，允许你自定义希沃白板以及 WPS Office 的启动图，告别单调的默认启动图！
 
 ### 功能特性
 
@@ -37,6 +37,7 @@ SeewoSplash 是一个 Fluent 风格的图形化工具，允许你自定义希沃
 |  深色模式  |  浅色模式  |
 |-----------|-----------|
 | ![主页面-深色](docs/screenshots/main_window_dark.png "主页面-深色") | ![主页面-浅色](docs/screenshots/main_window_light.png "主页面-浅色") |
+| ![WPS 页面-深色](docs/screenshots/wps_window_dark.png "WPS 页面-深色") | ![WPS 页面-浅色](docs/screenshots/wps_window_light.png "WPS 页面-浅色") |
 
 ## 安装使用
 
