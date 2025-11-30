@@ -184,6 +184,46 @@ class PathDetector:
         return all_paths
     
     @staticmethod
+    def detect_wps_paths():
+        """检测WPS Office启动图片路径"""
+        paths = []
+        
+        # WPS Office可能的安装路径
+        possible_base_paths = [
+            "C:\\Program Files\\Kingsoft\\WPS Office",
+            "C:\\Program Files (x86)\\Kingsoft\\WPS Office",
+            "C:\\Program Files\\WPS Office",
+            "C:\\Program Files (x86)\\WPS Office",
+        ]
+        
+        # WPS可能的启动图片路径模式
+        splash_patterns = [
+            # 常见路径1: office6\mui\*\res\splash.png
+            "office6\\mui\\*\\res\\splash.png",
+            # 常见路径2: office6\res\splash.png
+            "office6\\res\\splash.png",
+            # 常见路径3: wps\res\splash.png
+            "wps\\res\\splash.png",
+            # 常见路径4: office6\mui\zh_CN\res\splash.png
+            "office6\\mui\\zh_CN\\res\\splash.png",
+        ]
+        
+        for base_path in possible_base_paths:
+            if os.path.exists(base_path):
+                for pattern in splash_patterns:
+                    full_pattern = os.path.join(base_path, pattern)
+                    found_paths = glob.glob(full_pattern)
+                    paths.extend(found_paths)
+        
+        # 去重
+        return list(set(paths))
+    
+    @staticmethod
+    def detect_all_wps_paths():
+        """检测所有WPS路径（用于用户选择）"""
+        return PathDetector.detect_wps_paths()
+    
+    @staticmethod
     def get_all_paths_with_info():
         """
         获取所有路径及其详细信息
@@ -220,48 +260,72 @@ class PathDetector:
         return all_paths
     
     @staticmethod
-    def manual_select_target_image(parent=None):
+    def manual_select_target_image(parent=None, app_type="seewo"):
         """
         手动选择目标图片
         
         Args:
             parent: 父窗口对象
+            app_type: 应用类型，"seewo" 或 "wps"
             
         Returns:
             str: 选中的图片路径,如果取消则返回空字符串
         """
-        # 创建自定义消息框
-        content = (
-            "无法自动检测到希沃白板的启动图片。\n\n"
-            "您可以手动选择要替换的目标图片文件。\n"
-            "目标图片通常位于以下位置之一:\n\n"
-            "1. Banner.png:\n"
-            "   C:\\Users\\[用户名]\\AppData\\Roaming\\Seewo\\EasiNote5\\Resources\\Banner\\Banner.png\n\n"
-            "2. SplashScreen.png (旧版):\n"
-            "   C:\\Program Files\\Seewo\\EasiNote5\\EasiNote5.xxx\\Main\\Assets\\SplashScreen.png\n\n"
-            "3. SplashScreen.png (新版):\n"
-            "   C:\\Program Files\\Seewo\\EasiNote5\\EasiNote5_x.x.x.xxxx\\Main\\Resources\\Startup\\SplashScreen.png\n\n"
-            "是否现在手动选择目标图片?"
-        )
+        if app_type == "wps":
+            content = (
+                "无法自动检测到WPS Office的启动图片。\n\n"
+                "您可以手动选择要替换的目标图片文件。\n"
+                "目标图片通常位于以下位置之一:\n\n"
+                "1. office6\\mui\\[语言]\\res\\splash.png\n"
+                "   C:\\Program Files\\Kingsoft\\WPS Office\\office6\\mui\\zh_CN\\res\\splash.png\n\n"
+                "2. office6\\res\\splash.png\n"
+                "   C:\\Program Files\\Kingsoft\\WPS Office\\office6\\res\\splash.png\n\n"
+                "是否现在手动选择目标图片?"
+            )
+        else:
+            # 创建自定义消息框
+            content = (
+                "无法自动检测到希沃白板的启动图片。\n\n"
+                "您可以手动选择要替换的目标图片文件。\n"
+                "目标图片通常位于以下位置之一:\n\n"
+                "1. Banner.png:\n"
+                "   C:\\Users\\[用户名]\\AppData\\Roaming\\Seewo\\EasiNote5\\Resources\\Banner\\Banner.png\n\n"
+                "2. SplashScreen.png (旧版):\n"
+                "   C:\\Program Files\\Seewo\\EasiNote5\\EasiNote5.xxx\\Main\\Assets\\SplashScreen.png\n\n"
+                "3. SplashScreen.png (新版):\n"
+                "   C:\\Program Files\\Seewo\\EasiNote5\\EasiNote5_x.x.x.xxxx\\Main\\Resources\\Startup\\SplashScreen.png\n\n"
+                "是否现在手动选择目标图片?"
+            )
         
         # 使用 MessageBox 创建询问对话框
-        w = MessageBox("手动选择目标图片", content, parent)
+        title = "手动选择目标图片" if app_type == "seewo" else "手动选择WPS启动图片"
+        w = MessageBox(title, content, parent)
         if not w.exec():
             return ""
         
         # 打开文件选择对话框
-        file_dialog = QFileDialog(parent, "选择希沃白板启动图片")
+        dialog_title = "选择WPS Office启动图片" if app_type == "wps" else "选择希沃白板启动图片"
+        file_dialog = QFileDialog(parent, dialog_title)
         file_dialog.setNameFilter("PNG图片 (*.png);;所有文件 (*.*)")
         file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
         
         # 设置初始目录为常见路径
-        initial_dir = "C:\\Program Files\\Seewo\\EasiNote5"
-        if not os.path.exists(initial_dir):
-            initial_dir = "C:\\Program Files (x86)\\Seewo\\EasiNote5"
-        if not os.path.exists(initial_dir):
-            initial_dir = os.path.join(os.environ.get("APPDATA", "C:\\"), "Seewo")
-        if not os.path.exists(initial_dir):
-            initial_dir = "C:\\"
+        if app_type == "wps":
+            initial_dir = "C:\\Program Files\\Kingsoft\\WPS Office"
+            if not os.path.exists(initial_dir):
+                initial_dir = "C:\\Program Files (x86)\\Kingsoft\\WPS Office"
+            if not os.path.exists(initial_dir):
+                initial_dir = "C:\\Program Files\\WPS Office"
+            if not os.path.exists(initial_dir):
+                initial_dir = "C:\\"
+        else:
+            initial_dir = "C:\\Program Files\\Seewo\\EasiNote5"
+            if not os.path.exists(initial_dir):
+                initial_dir = "C:\\Program Files (x86)\\Seewo\\EasiNote5"
+            if not os.path.exists(initial_dir):
+                initial_dir = os.path.join(os.environ.get("APPDATA", "C:\\"), "Seewo")
+            if not os.path.exists(initial_dir):
+                initial_dir = "C:\\"
         
         file_dialog.setDirectory(initial_dir)
         

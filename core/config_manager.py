@@ -52,52 +52,91 @@ class ConfigManager:
         return {
             "target_path": "",
             "target_path_history": [],
+            "wps_target_path": "",
+            "wps_target_path_history": [],
             "last_selected_image": "",
+            "wps_last_selected_image": "",
             "custom_images": [],
             "auto_detect_on_startup": True,
             "theme_mode": "auto",  # 主题模式: light, dark, auto
             "theme_color": "#009FAA",  # 默认主题色（QFluentWidgets 蓝色）
+            "use_custom_theme_color": False,  # 是否使用自定义主题色（False表示使用默认颜色）
             "mica_effect": True  # 云母效果（默认开启）
         }
     
-    def get_target_path(self):
-        """获取目标路径"""
+    def get_target_path(self, page="home"):
+        """获取目标路径
+        
+        Args:
+            page: 页面标识，"home" 或 "wps"
+        """
+        if page == "wps":
+            return self.config.get("wps_target_path", "")
         return self.config.get("target_path", "")
     
-    def set_target_path(self, path):
-        """设置目标路径"""
-        if path:
-            self.config["target_path"] = path
-            self.add_to_path_history(path)
+    def set_target_path(self, path, page="home"):
+        """设置目标路径
+        
+        Args:
+            path: 目标路径
+            page: 页面标识，"home" 或 "wps"
+        """
+        if page == "wps":
+            if path:
+                self.config["wps_target_path"] = path
+                self.add_to_path_history(path, page)
+            else:
+                self.config["wps_target_path"] = ""
         else:
-            self.config["target_path"] = ""
+            if path:
+                self.config["target_path"] = path
+                self.add_to_path_history(path, page)
+            else:
+                self.config["target_path"] = ""
         self.save()
     
-    def add_to_path_history(self, path):
-        """添加路径到历史记录"""
-        if "target_path_history" not in self.config:
-            self.config["target_path_history"] = []
+    def add_to_path_history(self, path, page="home"):
+        """添加路径到历史记录
         
-        if path in self.config["target_path_history"]:
-            self.config["target_path_history"].remove(path)
+        Args:
+            path: 路径
+            page: 页面标识，"home" 或 "wps"
+        """
+        history_key = "wps_target_path_history" if page == "wps" else "target_path_history"
+        if history_key not in self.config:
+            self.config[history_key] = []
         
-        self.config["target_path_history"].insert(0, path)
-        self.config["target_path_history"] = self.config["target_path_history"][:5]
+        if path in self.config[history_key]:
+            self.config[history_key].remove(path)
+        
+        self.config[history_key].insert(0, path)
+        self.config[history_key] = self.config[history_key][:5]
+        self.save()
     
-    def get_path_history(self):
-        """获取路径历史记录"""
-        return self.config.get("target_path_history", [])
+    def get_path_history(self, page="home"):
+        """获取路径历史记录
+        
+        Args:
+            page: 页面标识，"home" 或 "wps"
+        """
+        history_key = "wps_target_path_history" if page == "wps" else "target_path_history"
+        return self.config.get(history_key, [])
     
-    def clear_invalid_history(self):
-        """清理无效的历史路径"""
-        if "target_path_history" not in self.config:
+    def clear_invalid_history(self, page="home"):
+        """清理无效的历史路径
+        
+        Args:
+            page: 页面标识，"home" 或 "wps"
+        """
+        history_key = "wps_target_path_history" if page == "wps" else "target_path_history"
+        if history_key not in self.config:
             return
         
         valid_paths = [
-            path for path in self.config["target_path_history"]
+            path for path in self.config[history_key]
             if os.path.exists(path)
         ]
-        self.config["target_path_history"] = valid_paths
+        self.config[history_key] = valid_paths
         self.save()
     
     def get_auto_detect_on_startup(self):
@@ -133,17 +172,36 @@ class ConfigManager:
         """
         return self.config.get("theme_color", "#009FAA")
     
-    def set_theme_color(self, color):
+    def set_theme_color(self, color, is_custom=True):
         """设置主题色
         
         Args:
             color (str): 十六进制颜色值，如 "#0078D4"
+            is_custom (bool): 是否为自定义颜色（True表示自定义，False表示使用默认颜色）
         """
         if isinstance(color, str) and (color.startswith("#") and len(color) == 7):
             self.config["theme_color"] = color
+            self.config["use_custom_theme_color"] = is_custom
             self.save()
         else:
             print(f"无效的颜色格式: {color}，应为十六进制格式如 #0078D4")
+    
+    def get_use_custom_theme_color(self):
+        """获取是否使用自定义主题色
+        
+        Returns:
+            bool: 是否使用自定义主题色
+        """
+        return self.config.get("use_custom_theme_color", False)
+    
+    def set_use_custom_theme_color(self, is_custom):
+        """设置是否使用自定义主题色
+        
+        Args:
+            is_custom (bool): 是否使用自定义主题色
+        """
+        self.config["use_custom_theme_color"] = is_custom
+        self.save()
     
     def get_mica_effect(self):
         """获取云母效果设置
@@ -165,13 +223,27 @@ class ConfigManager:
         else:
             print(f"云母效果设置必须为布尔值，收到: {type(enabled)}")
     
-    def get_last_selected_image(self):
-        """获取最后选中的图片"""
+    def get_last_selected_image(self, page="home"):
+        """获取最后选中的图片
+        
+        Args:
+            page: 页面标识，"home" 或 "wps"
+        """
+        if page == "wps":
+            return self.config.get("wps_last_selected_image", "")
         return self.config.get("last_selected_image", "")
     
-    def set_last_selected_image(self, image_name):
-        """设置最后选中的图片"""
-        self.config["last_selected_image"] = image_name
+    def set_last_selected_image(self, image_name, page="home"):
+        """设置最后选中的图片
+        
+        Args:
+            image_name: 图片名称
+            page: 页面标识，"home" 或 "wps"
+        """
+        if page == "wps":
+            self.config["wps_last_selected_image"] = image_name
+        else:
+            self.config["last_selected_image"] = image_name
         self.save()
     
     def get_custom_images(self):

@@ -44,9 +44,10 @@ class TargetPathSelectionDialog(MessageBoxBase):
 class PathController:
     """路径管理控制器"""
     
-    def __init__(self, parent: QWidget, config_manager: ConfigManager):
+    def __init__(self, parent: QWidget, config_manager: ConfigManager, page="home"):
         self.parent = parent
         self.config_manager = config_manager
+        self.page = page  # "home" 或 "wps"
         self.target_path = ""
     
     def load_and_validate_target_path(self) -> tuple[bool, str]:
@@ -56,7 +57,7 @@ class PathController:
             (成功标志, 提示消息)
         """
         # 先尝试加载上次保存的路径
-        saved_path = self.config_manager.get_target_path()
+        saved_path = self.config_manager.get_target_path(self.page)
         
         if saved_path:
             is_valid, error_msg = PathDetector.validate_target_path(saved_path)
@@ -65,16 +66,16 @@ class PathController:
                 return True, f"已加载上次使用的路径: {os.path.basename(saved_path)}"
         
         # 尝试从历史记录中查找有效路径
-        history = self.config_manager.get_path_history()
+        history = self.config_manager.get_path_history(self.page)
         for historical_path in history:
             is_valid, _ = PathDetector.validate_target_path(historical_path)
             if is_valid:
                 self.target_path = historical_path
-                self.config_manager.set_target_path(historical_path)
+                self.config_manager.set_target_path(historical_path, self.page)
                 return True, f"已从历史记录恢复路径: {os.path.basename(historical_path)}"
         
         # 清理无效的历史记录
-        self.config_manager.clear_invalid_history()
+        self.config_manager.clear_invalid_history(self.page)
         
         # 如果启用了自动检测
         if self.config_manager.get_auto_detect_on_startup():
@@ -84,11 +85,14 @@ class PathController:
     
     def _silent_detect(self) -> tuple[bool, str]:
         """静默检测目标路径"""
-        paths = PathDetector.detect_all_paths()
+        if self.page == "wps":
+            paths = PathDetector.detect_wps_paths()
+        else:
+            paths = PathDetector.detect_all_paths()
         
         if paths:
             self.target_path = paths[0]
-            self.config_manager.set_target_path(self.target_path)
+            self.config_manager.set_target_path(self.target_path, self.page)
             return True, f"检测成功: {os.path.basename(self.target_path)}"
         
         return False, ""
@@ -99,15 +103,20 @@ class PathController:
         Returns:
             (成功标志, 提示消息)
         """
-        paths = PathDetector.detect_all_paths()
+        if self.page == "wps":
+            paths = PathDetector.detect_wps_paths()
+            app_type = "wps"
+        else:
+            paths = PathDetector.detect_all_paths()
+            app_type = "seewo"
         
         if not paths:
             # 手动选择
-            self.target_path = PathDetector.manual_select_target_image(self.parent)
+            self.target_path = PathDetector.manual_select_target_image(self.parent, app_type)
             if self.target_path:
                 is_valid, error_msg = PathDetector.validate_target_path(self.target_path)
                 if is_valid:
-                    self.config_manager.set_target_path(self.target_path)
+                    self.config_manager.set_target_path(self.target_path, self.page)
                     return True, f"路径设置成功: {os.path.basename(self.target_path)}"
                 else:
                     return False, f"选择的路径无效:\n{error_msg}"
@@ -124,7 +133,7 @@ class PathController:
         else:
             self.target_path = paths[0]
         
-        self.config_manager.set_target_path(self.target_path)
+        self.config_manager.set_target_path(self.target_path, self.page)
         return True, f"检测成功: {os.path.basename(self.target_path)}"
     
     def select_from_history(self) -> tuple[bool, str, bool]:
@@ -137,12 +146,13 @@ class PathController:
         
         selected_path, success = PathHistoryDialog.show_and_select(
             self.parent,
-            self.config_manager
+            self.config_manager,
+            self.page
         )
         
         if success and selected_path:
             self.target_path = selected_path
-            self.config_manager.set_target_path(selected_path)
+            self.config_manager.set_target_path(selected_path, self.page)
             return True, selected_path, False
         elif success and not selected_path:
             # 用户选择了重新检测

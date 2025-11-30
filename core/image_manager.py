@@ -10,6 +10,9 @@ class ImageManager:
         # 预设图片目录（打包后在 _internal/assets/presets 中）
         self.preset_dir = Path(get_resource_path("assets/presets"))
         
+        # WPS预设图片目录（打包后在 _internal/assets/presets/wps 中）
+        self.wps_preset_dir = Path(get_resource_path("assets/presets/wps"))
+        
         # 自定义图片目录（在可执行文件目录的 images/custom 中）
         self.custom_dir = Path(get_app_data_path("images/custom"))
         
@@ -18,6 +21,8 @@ class ImageManager:
         
         print(f"[DEBUG] 预设图片目录: {self.preset_dir}")
         print(f"[DEBUG] 预设图片目录存在: {self.preset_dir.exists()}")
+        print(f"[DEBUG] WPS预设图片目录: {self.wps_preset_dir}")
+        print(f"[DEBUG] WPS预设图片目录存在: {self.wps_preset_dir.exists()}")
         print(f"[DEBUG] 自定义图片目录: {self.custom_dir}")
         print(f"[DEBUG] 自定义图片目录存在: {self.custom_dir.exists()}")
         
@@ -25,23 +30,38 @@ class ImageManager:
         from core.config_manager import ConfigManager
         self.config_manager = ConfigManager()
     
-    def get_preset_images(self):
-        """获取预设图片列表"""
+    def get_preset_images(self, page="home"):
+        """获取预设图片列表
+        
+        Args:
+            page: 页面标识，"home" 或 "wps"
+        """
         preset_images = []
         
-        if not self.preset_dir.exists():
-            print(f"警告: 预设图片目录不存在: {self.preset_dir}")
+        # 根据页面选择预设目录
+        preset_dir = self.wps_preset_dir if page == "wps" else self.preset_dir
+        
+        if not preset_dir.exists():
+            print(f"警告: 预设图片目录不存在: {preset_dir}")
             return preset_images
         
         # 预设图片的显示名称映射
-        preset_names = {
-            "default.png": "默认图片",
-            "minimal.png": "简约风格",
-            "colorful.png": "彩色风格",
-            "professional.png": "专业风格",
-        }
+        if page == "wps":
+            preset_names = {
+                "default.png": "默认图片",
+                "minimal.png": "简约风格",
+                "colorful.png": "彩色风格",
+                "professional.png": "专业风格",
+            }
+        else:
+            preset_names = {
+                "default.png": "默认图片",
+                "minimal.png": "简约风格",
+                "colorful.png": "彩色风格",
+                "professional.png": "专业风格",
+            }
         
-        for img_file in self.preset_dir.glob("*.png"):
+        for img_file in preset_dir.glob("*.png"):
             display_name = preset_names.get(img_file.name, img_file.stem)
             preset_images.append({
                 "filename": img_file.name,

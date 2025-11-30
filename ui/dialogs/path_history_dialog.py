@@ -63,17 +63,18 @@ class PathHistoryDialog:
     """历史路径对话框辅助类"""
     
     @staticmethod
-    def show_and_select(parent, config_manager) -> tuple[str, bool]:
+    def show_and_select(parent, config_manager, page="home") -> tuple[str, bool]:
         """显示历史路径对话框并选择路径
         
         Args:
             parent: 父窗口
             config_manager: 配置管理器实例
+            page: 页面标识，"home" 或 "wps"
             
         Returns:
             tuple: (选择的路径, 是否成功选择)
         """
-        history = config_manager.get_path_history()
+        history = config_manager.get_path_history(page)
         
         if not history:
             w = MessageBox(
@@ -99,7 +100,7 @@ class PathHistoryDialog:
             )
             
             if w.exec():
-                config_manager.clear_invalid_history()
+                config_manager.clear_invalid_history(page)
             
             return "", False
         
