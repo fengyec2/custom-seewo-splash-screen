@@ -69,7 +69,7 @@ class MainWindow(FluentWindow):
         # 主页
         self.homeInterface = QWidget()
         self.homeInterface.setObjectName("homeInterface")
-        self.addSubInterface(self.homeInterface, FIF.HOME, '主页')
+        self.addSubInterface(self.homeInterface, FIF.HOME, '希沃白板')
         
         layout = QVBoxLayout(self.homeInterface)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -89,7 +89,7 @@ class MainWindow(FluentWindow):
         # WPS页面
         self.wpsInterface = QWidget()
         self.wpsInterface.setObjectName("wpsInterface")
-        self.addSubInterface(self.wpsInterface, FIF.DOCUMENT, 'WPS')
+        self.addSubInterface(self.wpsInterface, FIF.DOCUMENT, 'WPS Office')
         
         wps_layout = QVBoxLayout(self.wpsInterface)
         wps_layout.setContentsMargins(20, 20, 20, 20)
