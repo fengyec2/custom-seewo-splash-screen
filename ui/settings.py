@@ -6,8 +6,7 @@ from PyQt6.QtWidgets import QWidget
 from qfluentwidgets import (
     FluentIcon as FIF, SettingCardGroup, OptionsSettingCard, 
     SwitchSettingCard, PrimaryPushSettingCard, qconfig, setTheme, Theme,
-    TitleLabel, ScrollArea, ExpandLayout, setThemeColor,
-    CustomColorSettingCard
+    TitleLabel, ScrollArea, ExpandLayout
 )
 
 from core.config_manager import ConfigManager
@@ -82,15 +81,6 @@ class SettingsInterface(ScrollArea):
             parent=self.appearance_group
         )
         
-        # 自定义主题色卡片
-        self.custom_color_card = CustomColorSettingCard(
-            qconfig.themeColor,
-            FIF.BRUSH,
-            "自定义主题色",
-            "选择你喜欢的主题色",
-            parent=self.appearance_group
-        )
-        
         # 云母效果卡片 - 仅在Windows 11上可用
         self.mica_card = SwitchSettingCard(
             FIF.TRANSPARENT,
@@ -103,12 +93,10 @@ class SettingsInterface(ScrollArea):
         # 绑定信号
         qconfig.themeChanged.connect(setTheme)
         self.theme_card.optionChanged.connect(self._on_theme_changed)
-        self.custom_color_card.colorChanged.connect(self._on_custom_color_changed)
         self.mica_card.checkedChanged.connect(self._on_mica_effect_changed)
         
         # 添加到设置组
         self.appearance_group.addSettingCard(self.theme_card)
-        self.appearance_group.addSettingCard(self.custom_color_card)
         self.appearance_group.addSettingCard(self.mica_card)
     
     def _create_behavior_group(self):
@@ -180,46 +168,6 @@ class SettingsInterface(ScrollArea):
                 2000
             )
     
-    def _on_theme_color_changed(self, color):
-        """主题色变化事件"""
-        # 设置全局主题色
-        setThemeColor(color)
-        
-        # 保存到配置文件（如果配置管理器支持）
-        try:
-            self.config_manager.set_theme_color(color.name())
-        except AttributeError:
-            # 如果配置管理器不支持主题色配置，跳过
-            pass
-        
-        # 显示成功消息
-        if self.parent_window:
-            MessageHelper.show_success(
-                self.parent_window,
-                "主题色已更新",
-                2000
-            )
-    
-    def _on_custom_color_changed(self, color):
-        """自定义主题色变化事件"""
-        # 设置全局主题色
-        setThemeColor(color)
-        
-        # 保存到配置文件（如果配置管理器支持）
-        try:
-            self.config_manager.set_theme_color(color.name())
-        except AttributeError:
-            # 如果配置管理器不支持主题色配置，跳过
-            pass
-        
-        # 显示成功消息
-        if self.parent_window:
-            MessageHelper.show_success(
-                self.parent_window,
-                f"自定义主题色已设置为 {color.name()}",
-                2000
-            )
-    
     def _on_mica_effect_changed(self, enabled):
         """云母效果切换事件"""
         # 保存到配置文件（如果配置管理器支持）
@@ -261,16 +209,6 @@ class SettingsInterface(ScrollArea):
             }
             saved_theme = theme_map.get(theme_mode, Theme.AUTO)
             setTheme(saved_theme)
-            
-            # 应用主题色（如果配置管理器支持）
-            try:
-                theme_color = self.config_manager.get_theme_color()
-                if theme_color:
-                    from PyQt6.QtGui import QColor
-                    setThemeColor(QColor(theme_color))
-            except AttributeError:
-                # 如果配置管理器不支持主题色配置，跳过
-                pass
             
             # 应用云母效果（现在不会显示提示消息）
             try:
