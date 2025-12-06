@@ -185,10 +185,151 @@ class PathDetector:
     
     @staticmethod
     def detect_wps_paths():
-        """检测WPS Office启动图片路径（splash目录结构）
+        r"""检测WPS Office启动图片路径（splash目录结构）
         
         返回splash目录的路径，如果找到splash目录，则返回该目录路径
         如果找不到splash目录，则返回空列表
+        
+        支持的路径格式：
+        1. 用户目录：C:\Users\[用户名]\AppData\Local\Kingsoft\WPS Office\[版本号]\office6\mui\[语言]\resource\splash\
+        2. Program Files：C:\Program Files\Kingsoft\WPS Office\office6\mui\[语言]\res\splash\
+        3. Program Files (x86)：C:\Program Files (x86)\Kingsoft\WPS Office\office6\mui\[语言]\res\splash\
+        """
+        splash_dirs = []
+        
+        # 1. 检测用户目录下的WPS路径
+        splash_dirs.extend(PathDetector._detect_wps_user_paths())
+        
+        # 2. 检测Program Files下的WPS路径
+        splash_dirs.extend(PathDetector._detect_wps_program_files_paths())
+        
+        # 去重并返回第一个找到的splash目录
+        if splash_dirs:
+            return [splash_dirs[0]]  # 返回第一个找到的splash目录
+        return []
+    
+    @staticmethod
+    def _detect_wps_user_paths():
+        r"""检测用户目录下的WPS路径
+        
+        路径格式：C:\Users\[用户名]\AppData\Local\Kingsoft\WPS Office\[版本号]\office6\mui\[语言]\resource\splash\
+        """
+        splash_dirs = []
+        
+        # 获取所有可能的用户目录
+        # 尝试常见的盘符（C、D、E等）
+        possible_drives = []
+        for drive_letter in "CDEFGHIJKLMNOPQRSTUVWXYZ":
+            users_path = f"{drive_letter}:\\Users"
+            if os.path.exists(users_path):
+                possible_drives.append(drive_letter)
+        
+        # 如果没有找到Users目录，尝试使用环境变量
+        if not possible_drives:
+            userprofile = os.environ.get("USERPROFILE", "")
+            if userprofile:
+                # 从USERPROFILE提取盘符，如 C:\Users\Luminary -> C
+                drive = os.path.splitdrive(userprofile)[0]
+                if drive:
+                    possible_drives.append(drive[0])  # 提取盘符字母
+        
+        # 优先检查当前用户目录
+        userprofile = os.environ.get("USERPROFILE", "")
+        if userprofile:
+            current_user_splash = PathDetector._check_user_wps_path(userprofile)
+            if current_user_splash:
+                splash_dirs.append(current_user_splash)
+                # 如果找到当前用户的路径，直接返回（优先使用当前用户的）
+                return splash_dirs
+        
+        # 遍历所有可能的用户目录（检查其他用户）
+        for drive_letter in possible_drives:
+            users_dir = f"{drive_letter}:\\Users"
+            if not os.path.exists(users_dir):
+                continue
+            
+            # 遍历所有用户目录
+            try:
+                for user_name in os.listdir(users_dir):
+                    user_dir = os.path.join(users_dir, user_name)
+                    if not os.path.isdir(user_dir):
+                        continue
+                    
+                    # 跳过已经检查过的当前用户目录
+                    if user_dir == userprofile:
+                        continue
+                    
+                    user_splash = PathDetector._check_user_wps_path(user_dir)
+                    if user_splash:
+                        splash_dirs.append(user_splash)
+            except (PermissionError, OSError):
+                continue
+        
+        return splash_dirs
+    
+    @staticmethod
+    def _check_user_wps_path(user_dir):
+        r"""检查指定用户目录下的WPS路径
+        
+        Args:
+            user_dir: 用户目录路径，如 C:\Users\Luminary
+            
+        Returns:
+            str: 找到的splash目录路径，如果未找到则返回None
+        """
+        # 构建WPS路径
+        wps_base = os.path.join(user_dir, "AppData", "Local", "Kingsoft", "WPS Office")
+        if not os.path.exists(wps_base):
+            return None
+        
+        # 查找所有版本号目录
+        try:
+            for version_dir in os.listdir(wps_base):
+                version_path = os.path.join(wps_base, version_dir)
+                if not os.path.isdir(version_path):
+                    continue
+                
+                # 检查office6目录
+                office6_path = os.path.join(version_path, "office6")
+                if not os.path.exists(office6_path):
+                    continue
+                
+                # 检查mui目录
+                mui_path = os.path.join(office6_path, "mui")
+                if not os.path.exists(mui_path):
+                    continue
+                
+                # 遍历所有语言目录
+                try:
+                    for lang_dir in os.listdir(mui_path):
+                        lang_path = os.path.join(mui_path, lang_dir)
+                        if not os.path.isdir(lang_path):
+                            continue
+                        
+                        # 检查resource目录（注意是resource不是res）
+                        resource_path = os.path.join(lang_path, "resource")
+                        if not os.path.exists(resource_path):
+                            continue
+                        
+                        # 检查splash目录
+                        splash_dir = os.path.join(resource_path, "splash")
+                        if os.path.isdir(splash_dir):
+                            # 验证splash目录是否包含必要的文件
+                            if PathDetector._validate_wps_splash_dir(splash_dir):
+                                return splash_dir
+                except (PermissionError, OSError):
+                    continue
+        except (PermissionError, OSError):
+            pass
+        
+        return None
+    
+    @staticmethod
+    def _detect_wps_program_files_paths():
+        r"""检测Program Files下的WPS路径
+        
+        路径格式：C:\Program Files\Kingsoft\WPS Office\office6\mui\[语言]\res\splash\
+        或：C:\Program Files\Kingsoft\WPS Office\office6\mui\[语言]\resource\splash\
         """
         splash_dirs = []
         
@@ -200,13 +341,20 @@ class PathDetector:
             "C:\\Program Files (x86)\\WPS Office",
         ]
         
+        # 尝试多个盘符
+        for drive_letter in "CDEFGHIJKLMNOPQRSTUVWXYZ":
+            possible_base_paths.extend([
+                f"{drive_letter}:\\Program Files\\Kingsoft\\WPS Office",
+                f"{drive_letter}:\\Program Files (x86)\\Kingsoft\\WPS Office",
+                f"{drive_letter}:\\Program Files\\WPS Office",
+                f"{drive_letter}:\\Program Files (x86)\\WPS Office",
+            ])
+        
         # WPS可能的splash目录路径模式
-        # 根据README，splash目录可能在以下位置：
-        # - office6\mui\*\res\splash\
-        # - office6\res\splash\
-        # - wps\res\splash\
+        # 注意：可能是res或resource
         splash_dir_patterns = [
-            "office6\\mui\\*\\res\\splash",
+            "office6\\mui\\*\\resource\\splash",  # 用户目录格式
+            "office6\\mui\\*\\res\\splash",        # Program Files格式
             "office6\\res\\splash",
             "wps\\res\\splash",
         ]
@@ -222,10 +370,7 @@ class PathDetector:
                             if PathDetector._validate_wps_splash_dir(splash_dir):
                                 splash_dirs.append(splash_dir)
         
-        # 去重并返回第一个找到的splash目录
-        if splash_dirs:
-            return [splash_dirs[0]]  # 返回第一个找到的splash目录
-        return []
+        return splash_dirs
     
     @staticmethod
     def _validate_wps_splash_dir(splash_dir):
@@ -369,10 +514,14 @@ class PathDetector:
                 "无法自动检测到WPS Office的启动图片目录。\n\n"
                 "您可以手动选择splash目录。\n"
                 "splash目录通常位于以下位置之一:\n\n"
-                "1. office6\\mui\\[语言]\\res\\splash\\\n"
-                "   C:\\Program Files\\Kingsoft\\WPS Office\\office6\\mui\\zh_CN\\res\\splash\\\n\n"
-                "2. office6\\res\\splash\\\n"
-                "   C:\\Program Files\\Kingsoft\\WPS Office\\office6\\res\\splash\\\n\n"
+                "1. 用户目录（最常见）:\n"
+                "   C:\\Users\\[用户名]\\AppData\\Local\\Kingsoft\\WPS Office\\[版本号]\\office6\\mui\\[语言]\\resource\\splash\\\n"
+                "   示例: C:\\Users\\Luminary\\AppData\\Local\\Kingsoft\\WPS Office\\12.1.0.21171\\office6\\mui\\zh_CN\\resource\\splash\\\n\n"
+                "2. Program Files:\n"
+                "   C:\\Program Files\\Kingsoft\\WPS Office\\office6\\mui\\[语言]\\res\\splash\\\n"
+                "   或: C:\\Program Files\\Kingsoft\\WPS Office\\office6\\mui\\[语言]\\resource\\splash\\\n\n"
+                "3. Program Files (x86):\n"
+                "   C:\\Program Files (x86)\\Kingsoft\\WPS Office\\office6\\mui\\[语言]\\res\\splash\\\n\n"
                 "splash目录应包含以下文件:\n"
                 "- splash_default_bg.png\n"
                 "- splash_sup_default_bg.png\n"

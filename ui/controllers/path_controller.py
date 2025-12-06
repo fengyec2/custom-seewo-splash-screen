@@ -156,7 +156,33 @@ class PathController:
                 from PyQt6.QtWidgets import QFileDialog
                 dialog = QFileDialog(self.parent, "选择WPS splash目录")
                 dialog.setFileMode(QFileDialog.FileMode.Directory)
-                dialog.setDirectory("C:\\Program Files\\Kingsoft\\WPS Office")
+                
+                # 优先检查用户目录
+                initial_dir = None
+                userprofile = os.environ.get("USERPROFILE", "")
+                if userprofile:
+                    wps_user_path = os.path.join(userprofile, "AppData", "Local", "Kingsoft", "WPS Office")
+                    if os.path.exists(wps_user_path):
+                        initial_dir = wps_user_path
+                
+                # 如果用户目录不存在，尝试Program Files
+                if not initial_dir:
+                    possible_paths = [
+                        "C:\\Program Files\\Kingsoft\\WPS Office",
+                        "C:\\Program Files (x86)\\Kingsoft\\WPS Office",
+                        "D:\\Program Files\\Kingsoft\\WPS Office",
+                        "D:\\Program Files (x86)\\Kingsoft\\WPS Office",
+                    ]
+                    for path in possible_paths:
+                        if os.path.exists(path):
+                            initial_dir = path
+                            break
+                
+                # 如果都不存在，使用用户目录或C盘根目录
+                if not initial_dir:
+                    initial_dir = userprofile if userprofile else "C:\\"
+                
+                dialog.setDirectory(initial_dir)
                 
                 if dialog.exec():
                     selected_dirs = dialog.selectedFiles()
