@@ -9,86 +9,132 @@ class PathDetector:
     """检测希沃白板启动图片路径"""
     
     @staticmethod
-    def detect_banner_paths():
-        """检测Banner.png路径"""
-        paths = []
-        users_dir = "C:\\Users"
+    def _get_available_drives():
+        """
+        获取所有可用的驱动器盘符
         
-        if os.path.exists(users_dir):
-            for user_folder in os.listdir(users_dir):
-                banner_path = os.path.join(
-                    users_dir, 
-                    user_folder, 
-                    "AppData\\Roaming\\Seewo\\EasiNote5\\Resources\\Banner\\Banner.png"
-                )
-                if os.path.exists(banner_path):
-                    paths.append(banner_path)
+        Returns:
+            list: 可用驱动器盘符列表，如 ['C', 'D', 'E']
+        """
+        drives = []
+        for drive_letter in "CDEFGHIJKLMNOPQRSTUVWXYZ":
+            drive_path = f"{drive_letter}:\\"
+            if os.path.exists(drive_path):
+                drives.append(drive_letter)
+        
+        # 如果没有找到驱动器，尝试从环境变量获取
+        if not drives:
+            userprofile = os.environ.get("USERPROFILE", "")
+            if userprofile:
+                drive = os.path.splitdrive(userprofile)[0]
+                if drive:
+                    drive_letter = drive[0]
+                    if drive_letter not in drives:
+                        drives.append(drive_letter)
+        
+        return drives
+    
+    @staticmethod
+    def detect_banner_paths():
+        """检测Banner.png路径（支持多驱动器）"""
+        paths = []
+        
+        # 遍历所有可用驱动器
+        for drive_letter in PathDetector._get_available_drives():
+            users_dir = f"{drive_letter}:\\Users"
+            
+            if not os.path.exists(users_dir):
+                continue
+            
+            try:
+                for user_folder in os.listdir(users_dir):
+                    user_dir = os.path.join(users_dir, user_folder)
+                    if not os.path.isdir(user_dir):
+                        continue
+                    
+                    banner_path = os.path.join(
+                        user_dir, 
+                        "AppData\\Roaming\\Seewo\\EasiNote5\\Resources\\Banner\\Banner.png"
+                    )
+                    if os.path.exists(banner_path):
+                        paths.append(banner_path)
+            except (PermissionError, OSError):
+                continue
         
         return paths
     
     @staticmethod
     def detect_splashscreen_paths():
-        """检测SplashScreen.png路径"""
+        """检测SplashScreen.png路径（支持多驱动器）"""
         paths = []
         
-        # 检测 Program Files (x86)
-        base_path_x86 = "C:\\Program Files (x86)\\Seewo\\EasiNote5"
-        if os.path.exists(base_path_x86):
-            # 所有可能的路径组合
-            patterns = [
-                # 旧版路径格式
-                os.path.join(base_path_x86, "EasiNote5*", "Main", "Assets", "SplashScreen.png"),
-                # 新版路径格式
-                os.path.join(base_path_x86, "EasiNote5_*", "Main", "Resources", "Startup", "SplashScreen.png"),
-            ]
+        # 遍历所有可用驱动器
+        for drive_letter in PathDetector._get_available_drives():
+            # 检测 Program Files (x86)
+            base_path_x86 = f"{drive_letter}:\\Program Files (x86)\\Seewo\\EasiNote5"
+            if os.path.exists(base_path_x86):
+                # 所有可能的路径组合
+                patterns = [
+                    # 旧版路径格式
+                    os.path.join(base_path_x86, "EasiNote5*", "Main", "Assets", "SplashScreen.png"),
+                    # 新版路径格式
+                    os.path.join(base_path_x86, "EasiNote5_*", "Main", "Resources", "Startup", "SplashScreen.png"),
+                ]
+                
+                for pattern in patterns:
+                    paths.extend(glob.glob(pattern))
             
-            for pattern in patterns:
-                paths.extend(glob.glob(pattern))
-        
-        # 检测 Program Files
-        base_path = "C:\\Program Files\\Seewo\\EasiNote5"
-        if os.path.exists(base_path):
-            # 所有可能的路径组合
-            patterns = [
-                # 旧版路径格式
-                os.path.join(base_path, "EasiNote5*", "Main", "Assets", "SplashScreen.png"),
-                # 新版路径格式
-                os.path.join(base_path, "EasiNote5_*", "Main", "Resources", "Startup", "SplashScreen.png"),
-            ]
-            
-            for pattern in patterns:
-                paths.extend(glob.glob(pattern))
+            # 检测 Program Files
+            base_path = f"{drive_letter}:\\Program Files\\Seewo\\EasiNote5"
+            if os.path.exists(base_path):
+                # 所有可能的路径组合
+                patterns = [
+                    # 旧版路径格式
+                    os.path.join(base_path, "EasiNote5*", "Main", "Assets", "SplashScreen.png"),
+                    # 新版路径格式
+                    os.path.join(base_path, "EasiNote5_*", "Main", "Resources", "Startup", "SplashScreen.png"),
+                ]
+                
+                for pattern in patterns:
+                    paths.extend(glob.glob(pattern))
         
         return paths
     
     @staticmethod
     def detect_all_easinote_versions():
         """
-        检测所有版本的希沃白板安装路径
+        检测所有版本的希沃白板安装路径（支持多驱动器）
         
         Returns:
             list: 包含版本信息的字典列表
         """
         versions = []
         
-        # 检测 Program Files (x86)
-        base_paths = [
-            "C:\\Program Files (x86)\\Seewo\\EasiNote5",
-            "C:\\Program Files\\Seewo\\EasiNote5"
-        ]
-        
-        for base_path in base_paths:
-            if os.path.exists(base_path):
-                # 查找所有版本目录
-                for item in os.listdir(base_path):
-                    item_path = os.path.join(base_path, item)
-                    if os.path.isdir(item_path) and item.startswith("EasiNote5"):
-                        # 解析版本信息
-                        version_info = PathDetector._parse_version_info(item)
-                        if version_info:
-                            version_info['base_path'] = base_path
-                            version_info['full_path'] = item_path
-                            versions.append(version_info)
+        # 遍历所有可用驱动器
+        for drive_letter in PathDetector._get_available_drives():
+            # 检测 Program Files (x86) 和 Program Files
+            base_paths = [
+                f"{drive_letter}:\\Program Files (x86)\\Seewo\\EasiNote5",
+                f"{drive_letter}:\\Program Files\\Seewo\\EasiNote5"
+            ]
+            
+            for base_path in base_paths:
+                if not os.path.exists(base_path):
+                    continue
+                
+                try:
+                    # 查找所有版本目录
+                    for item in os.listdir(base_path):
+                        item_path = os.path.join(base_path, item)
+                        if os.path.isdir(item_path) and item.startswith("EasiNote5"):
+                            # 解析版本信息
+                            version_info = PathDetector._parse_version_info(item)
+                            if version_info:
+                                version_info['base_path'] = base_path
+                                version_info['full_path'] = item_path
+                                versions.append(version_info)
+                except (PermissionError, OSError):
+                    continue
         
         # 按版本号排序（新版本在前）
         versions.sort(key=lambda x: x['version_tuple'], reverse=True)
