@@ -6,11 +6,12 @@ from PyQt6.QtWidgets import QWidget
 from qfluentwidgets import (
     FluentIcon as FIF, SettingCardGroup, OptionsSettingCard, 
     SwitchSettingCard, PrimaryPushSettingCard, qconfig, setTheme, Theme,
-    TitleLabel, ScrollArea, ExpandLayout
+    TitleLabel, ScrollArea, ExpandLayout, setThemeColor
 )
 
 from core.config_manager import ConfigManager
 from core.app_info import get_version, get_app_name, get_repository
+from utils.system_theme import get_system_theme_color
 from .dialogs import MessageHelper
 
 
@@ -209,6 +210,10 @@ class SettingsInterface(ScrollArea):
             }
             saved_theme = theme_map.get(theme_mode, Theme.AUTO)
             setTheme(saved_theme)
+            
+            # 应用系统主题色
+            system_color = get_system_theme_color()
+            setThemeColor(system_color)
             
             # 应用云母效果（现在不会显示提示消息）
             try:
