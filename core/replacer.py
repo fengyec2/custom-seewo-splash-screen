@@ -244,6 +244,69 @@ class ImageReplacer:
         except Exception as e:
             return False, f"替换失败: {str(e)}", False
     
+    def replace_multiple_images(self, source_path, target_paths):
+        """
+        批量替换多个图片文件并自动启用保护
+        
+        Args:
+            source_path: 源图片路径
+            target_paths: 目标文件路径列表
+            
+        Returns:
+            tuple: (成功与否, 消息, 是否为权限问题, 成功数量, 失败数量)
+        """
+        if not os.path.exists(source_path):
+            return False, "源图片不存在", False, 0, 0
+        
+        if not target_paths:
+            return False, "目标路径列表为空", False, 0, 0
+        
+        success_count = 0
+        failed_count = 0
+        failed_files = []
+        permission_error = False
+        
+        # 逐个替换文件
+        for target_path in target_paths:
+            if not os.path.exists(target_path):
+                failed_count += 1
+                failed_files.append(os.path.basename(target_path))
+                continue
+            
+            success, msg, is_perm_error = self.replace_image(source_path, target_path)
+            
+            if success:
+                success_count += 1
+            else:
+                failed_count += 1
+                failed_files.append(os.path.basename(target_path))
+                if is_perm_error:
+                    permission_error = True
+        
+        # 构造返回消息
+        if success_count == len(target_paths):
+            # 全部成功
+            msg = f"成功替换 {success_count} 个文件"
+        elif success_count > 0:
+            # 部分成功
+            msg = f"成功替换 {success_count} 个文件，{failed_count} 个失败"
+            if failed_files:
+                msg += f"\n失败文件: {', '.join(failed_files[:5])}"  # 最多显示5个失败文件名
+                if len(failed_files) > 5:
+                    msg += f" 等共 {len(failed_files)} 个"
+        else:
+            # 全部失败
+            msg = f"替换失败: 所有 {len(target_paths)} 个文件都无法替换"
+            if failed_files:
+                msg += f"\n失败文件: {', '.join(failed_files[:5])}"
+                if len(failed_files) > 5:
+                    msg += f" 等共 {len(failed_files)} 个"
+        
+        # 如果至少有一个成功，则认为整体成功
+        overall_success = success_count > 0
+        
+        return overall_success, msg, permission_error, success_count, failed_count
+    
     def restore_backup(self, target_path):
         """
         从备份还原并移除保护
@@ -310,3 +373,62 @@ class ImageReplacer:
             return False, f"还原失败: {str(e)}", False
         except Exception as e:
             return False, f"还原失败: {str(e)}", False
+    
+    def restore_multiple_backups(self, target_paths):
+        """
+        批量从备份还原多个文件并移除保护
+        
+        Args:
+            target_paths: 目标文件路径列表
+            
+        Returns:
+            tuple: (成功与否, 消息, 是否为权限问题, 成功数量, 失败数量)
+        """
+        if not target_paths:
+            return False, "目标路径列表为空", False, 0, 0
+        
+        success_count = 0
+        failed_count = 0
+        failed_files = []
+        permission_error = False
+        
+        # 逐个还原文件
+        for target_path in target_paths:
+            if not os.path.exists(target_path):
+                failed_count += 1
+                failed_files.append(os.path.basename(target_path))
+                continue
+            
+            success, msg, is_perm_error = self.restore_backup(target_path)
+            
+            if success:
+                success_count += 1
+            else:
+                failed_count += 1
+                failed_files.append(os.path.basename(target_path))
+                if is_perm_error:
+                    permission_error = True
+        
+        # 构造返回消息
+        if success_count == len(target_paths):
+            # 全部成功
+            msg = f"成功还原 {success_count} 个文件"
+        elif success_count > 0:
+            # 部分成功
+            msg = f"成功还原 {success_count} 个文件，{failed_count} 个失败"
+            if failed_files:
+                msg += f"\n失败文件: {', '.join(failed_files[:5])}"  # 最多显示5个失败文件名
+                if len(failed_files) > 5:
+                    msg += f" 等共 {len(failed_files)} 个"
+        else:
+            # 全部失败
+            msg = f"还原失败: 所有 {len(target_paths)} 个文件都无法还原"
+            if failed_files:
+                msg += f"\n失败文件: {', '.join(failed_files[:5])}"
+                if len(failed_files) > 5:
+                    msg += f" 等共 {len(failed_files)} 个"
+        
+        # 如果至少有一个成功，则认为整体成功
+        overall_success = success_count > 0
+        
+        return overall_success, msg, permission_error, success_count, failed_count

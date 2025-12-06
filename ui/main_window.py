@@ -157,7 +157,9 @@ class MainWindow(FluentWindow):
         self.load_wps_images()
         wps_success, wps_message = self.wps_path_ctrl.load_and_validate_target_path()
         if wps_success:
-            self.wps_path_card.update_path_display(self.wps_path_ctrl.target_path)
+            target_paths = self.wps_path_ctrl.get_target_paths()
+            file_count = len(target_paths) if target_paths else None
+            self.wps_path_card.update_path_display(self.wps_path_ctrl.target_path, file_count)
             MessageHelper.show_success(self, wps_message, 3000)
         else:
             self.wps_path_card.update_path_display("")
@@ -363,7 +365,9 @@ class MainWindow(FluentWindow):
         success, message = self.wps_path_ctrl.detect_with_user_interaction()
         self.hide_progress("wps")
         
-        self.wps_path_card.update_path_display(self.wps_path_ctrl.target_path)
+        target_paths = self.wps_path_ctrl.get_target_paths()
+        file_count = len(target_paths) if target_paths else None
+        self.wps_path_card.update_path_display(self.wps_path_ctrl.target_path, file_count)
         if success:
             MessageHelper.show_success(self, message, 5000)
         elif message:
@@ -373,7 +377,10 @@ class MainWindow(FluentWindow):
         """WPS页面显示历史路径事件"""
         success, result, need_detect = self.wps_path_ctrl.select_from_history()
         if success:
-            self.wps_path_card.update_path_display(result)
+            self.wps_path_ctrl.target_path = result
+            target_paths = self.wps_path_ctrl.get_target_paths()
+            file_count = len(target_paths) if target_paths else None
+            self.wps_path_card.update_path_display(result, file_count)
             MessageHelper.show_success(self, f"已设置目标路径: {os.path.basename(result)}", 5000)
         elif need_detect:
             self._on_wps_detect_path()
@@ -429,15 +436,24 @@ class MainWindow(FluentWindow):
             MessageHelper.show_warning(self, "未选择图片", "请先从列表中选择要替换的图片")
             return
         
-        self.show_progress("正在替换...", "wps")
-        success, msg, is_permission_error = self.replacer.replace_image(
+        # 获取所有需要替换的文件路径
+        target_paths = self.wps_path_ctrl.get_target_paths()
+        if not target_paths:
+            MessageHelper.show_warning(self, "未找到启动图文件", "请确保splash目录包含所有必要的启动图文件")
+            return
+        
+        self.show_progress(f"正在替换 {len(target_paths)} 个文件...", "wps")
+        success, msg, is_permission_error, success_count, failed_count = self.replacer.replace_multiple_images(
             image_info["path"],
-            self.wps_path_ctrl.target_path
+            target_paths
         )
         self.hide_progress("wps")
         
         if success:
-            MessageHelper.show_success(self, f"启动图片已替换为: {image_info['display_name']}", 3000)
+            if success_count == len(target_paths):
+                MessageHelper.show_success(self, f"启动图片已替换为: {image_info['display_name']}\n成功替换 {success_count} 个文件", 4000)
+            else:
+                MessageHelper.show_warning(self, f"部分替换成功\n{msg}", 5000)
         elif is_permission_error:
             self.permission_ctrl.handle_permission_error(self, msg)
         else:
@@ -449,12 +465,21 @@ class MainWindow(FluentWindow):
             MessageHelper.show_warning(self, "未检测到路径", "请先点击'检测路径'按钮")
             return
         
-        self.show_progress("正在还原...", "wps")
-        success, msg, is_permission_error = self.replacer.restore_backup(self.wps_path_ctrl.target_path)
+        # 获取所有需要还原的文件路径
+        target_paths = self.wps_path_ctrl.get_target_paths()
+        if not target_paths:
+            MessageHelper.show_warning(self, "未找到启动图文件", "请确保splash目录包含所有必要的启动图文件")
+            return
+        
+        self.show_progress(f"正在还原 {len(target_paths)} 个文件...", "wps")
+        success, msg, is_permission_error, success_count, failed_count = self.replacer.restore_multiple_backups(target_paths)
         self.hide_progress("wps")
         
         if success:
-            MessageHelper.show_success(self, "已从备份还原启动图片", 3000)
+            if success_count == len(target_paths):
+                MessageHelper.show_success(self, f"已从备份还原启动图片\n成功还原 {success_count} 个文件", 4000)
+            else:
+                MessageHelper.show_warning(self, f"部分还原成功\n{msg}", 5000)
         elif is_permission_error:
             self.permission_ctrl.handle_permission_error(self, msg)
         else:

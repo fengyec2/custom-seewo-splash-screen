@@ -185,8 +185,12 @@ class PathDetector:
     
     @staticmethod
     def detect_wps_paths():
-        """检测WPS Office启动图片路径"""
-        paths = []
+        """检测WPS Office启动图片路径（splash目录结构）
+        
+        返回splash目录的路径，如果找到splash目录，则返回该目录路径
+        如果找不到splash目录，则返回空列表
+        """
+        splash_dirs = []
         
         # WPS Office可能的安装路径
         possible_base_paths = [
@@ -196,27 +200,116 @@ class PathDetector:
             "C:\\Program Files (x86)\\WPS Office",
         ]
         
-        # WPS可能的启动图片路径模式
-        splash_patterns = [
-            # 常见路径1: office6\mui\*\res\splash.png
-            "office6\\mui\\*\\res\\splash.png",
-            # 常见路径2: office6\res\splash.png
-            "office6\\res\\splash.png",
-            # 常见路径3: wps\res\splash.png
-            "wps\\res\\splash.png",
-            # 常见路径4: office6\mui\zh_CN\res\splash.png
-            "office6\\mui\\zh_CN\\res\\splash.png",
+        # WPS可能的splash目录路径模式
+        # 根据README，splash目录可能在以下位置：
+        # - office6\mui\*\res\splash\
+        # - office6\res\splash\
+        # - wps\res\splash\
+        splash_dir_patterns = [
+            "office6\\mui\\*\\res\\splash",
+            "office6\\res\\splash",
+            "wps\\res\\splash",
         ]
         
         for base_path in possible_base_paths:
             if os.path.exists(base_path):
-                for pattern in splash_patterns:
+                for pattern in splash_dir_patterns:
                     full_pattern = os.path.join(base_path, pattern)
-                    found_paths = glob.glob(full_pattern)
-                    paths.extend(found_paths)
+                    found_dirs = glob.glob(full_pattern)
+                    for splash_dir in found_dirs:
+                        if os.path.isdir(splash_dir):
+                            # 验证splash目录是否包含必要的文件
+                            if PathDetector._validate_wps_splash_dir(splash_dir):
+                                splash_dirs.append(splash_dir)
         
-        # 去重
-        return list(set(paths))
+        # 去重并返回第一个找到的splash目录
+        if splash_dirs:
+            return [splash_dirs[0]]  # 返回第一个找到的splash目录
+        return []
+    
+    @staticmethod
+    def _validate_wps_splash_dir(splash_dir):
+        """验证WPS splash目录是否包含必要的启动图文件
+        
+        Args:
+            splash_dir: splash目录路径
+            
+        Returns:
+            bool: 如果目录包含必要的文件则返回True
+        """
+        required_files = [
+            "splash_default_bg.png",
+            "splash_sup_default_bg.png",
+            "splash_wps365_default_bg.png",
+        ]
+        
+        hdpi_required_files = [
+            "hdpi/splash_default_bg.png",
+            "hdpi/splash_sup_default_bg.png",
+            "hdpi/splash_wps365_default_bg.png",
+        ]
+        
+        # 检查根目录下的文件
+        for filename in required_files:
+            file_path = os.path.join(splash_dir, filename)
+            if not os.path.exists(file_path):
+                return False
+        
+        # 检查hdpi目录下的文件
+        hdpi_dir = os.path.join(splash_dir, "hdpi")
+        if os.path.isdir(hdpi_dir):
+            for filename in hdpi_required_files:
+                file_path = os.path.join(splash_dir, filename)
+                if not os.path.exists(file_path):
+                    return False
+        else:
+            # 如果hdpi目录不存在，也认为无效
+            return False
+        
+        return True
+    
+    @staticmethod
+    def get_wps_splash_files(splash_dir):
+        """获取WPS splash目录下的所有启动图文件路径
+        
+        Args:
+            splash_dir: splash目录路径
+            
+        Returns:
+            list: 包含6个文件路径的列表
+        """
+        if not splash_dir or not os.path.exists(splash_dir):
+            return []
+        
+        files = []
+        
+        # 根目录下的3个文件
+        root_files = [
+            "splash_default_bg.png",
+            "splash_sup_default_bg.png",
+            "splash_wps365_default_bg.png",
+        ]
+        
+        # hdpi目录下的3个文件
+        hdpi_files = [
+            "hdpi/splash_default_bg.png",
+            "hdpi/splash_sup_default_bg.png",
+            "hdpi/splash_wps365_default_bg.png",
+        ]
+        
+        # 添加根目录文件
+        for filename in root_files:
+            file_path = os.path.join(splash_dir, filename)
+            if os.path.exists(file_path):
+                files.append(file_path)
+        
+        # 添加hdpi目录文件
+        for filename in hdpi_files:
+            file_path = os.path.join(splash_dir, filename)
+            if os.path.exists(file_path):
+                files.append(file_path)
+        
+        return files
     
     @staticmethod
     def detect_all_wps_paths():
@@ -273,14 +366,21 @@ class PathDetector:
         """
         if app_type == "wps":
             content = (
-                "无法自动检测到WPS Office的启动图片。\n\n"
-                "您可以手动选择要替换的目标图片文件。\n"
-                "目标图片通常位于以下位置之一:\n\n"
-                "1. office6\\mui\\[语言]\\res\\splash.png\n"
-                "   C:\\Program Files\\Kingsoft\\WPS Office\\office6\\mui\\zh_CN\\res\\splash.png\n\n"
-                "2. office6\\res\\splash.png\n"
-                "   C:\\Program Files\\Kingsoft\\WPS Office\\office6\\res\\splash.png\n\n"
-                "是否现在手动选择目标图片?"
+                "无法自动检测到WPS Office的启动图片目录。\n\n"
+                "您可以手动选择splash目录。\n"
+                "splash目录通常位于以下位置之一:\n\n"
+                "1. office6\\mui\\[语言]\\res\\splash\\\n"
+                "   C:\\Program Files\\Kingsoft\\WPS Office\\office6\\mui\\zh_CN\\res\\splash\\\n\n"
+                "2. office6\\res\\splash\\\n"
+                "   C:\\Program Files\\Kingsoft\\WPS Office\\office6\\res\\splash\\\n\n"
+                "splash目录应包含以下文件:\n"
+                "- splash_default_bg.png\n"
+                "- splash_sup_default_bg.png\n"
+                "- splash_wps365_default_bg.png\n"
+                "- hdpi\\splash_default_bg.png\n"
+                "- hdpi\\splash_sup_default_bg.png\n"
+                "- hdpi\\splash_wps365_default_bg.png\n\n"
+                "是否现在手动选择splash目录?"
             )
         else:
             # 创建自定义消息框

@@ -48,7 +48,27 @@ class PathController:
         self.parent = parent
         self.config_manager = config_manager
         self.page = page  # "home" 或 "wps"
-        self.target_path = ""
+        self.target_path = ""  # 对于WPS，这是splash目录路径；对于希沃，这是单个文件路径
+    
+    def get_target_paths(self):
+        """获取目标路径列表
+        
+        对于WPS页面，返回所有需要替换的文件路径列表
+        对于希沃页面，返回单个文件路径的列表
+        
+        Returns:
+            list: 目标文件路径列表
+        """
+        if self.page == "wps":
+            # WPS页面：target_path是splash目录，需要获取所有文件
+            if self.target_path and os.path.isdir(self.target_path):
+                return PathDetector.get_wps_splash_files(self.target_path)
+            return []
+        else:
+            # 希沃页面：target_path是单个文件
+            if self.target_path and os.path.isfile(self.target_path):
+                return [self.target_path]
+            return []
     
     def load_and_validate_target_path(self) -> tuple[bool, str]:
         """加载并验证目标路径（静默模式）
@@ -60,19 +80,34 @@ class PathController:
         saved_path = self.config_manager.get_target_path(self.page)
         
         if saved_path:
-            is_valid, error_msg = PathDetector.validate_target_path(saved_path)
-            if is_valid:
-                self.target_path = saved_path
-                return True, f"已加载上次使用的路径: {os.path.basename(saved_path)}"
+            if self.page == "wps":
+                # WPS页面：验证splash目录
+                if os.path.isdir(saved_path) and PathDetector._validate_wps_splash_dir(saved_path):
+                    self.target_path = saved_path
+                    file_count = len(PathDetector.get_wps_splash_files(saved_path))
+                    return True, f"已加载WPS启动图目录 ({file_count}个文件)"
+            else:
+                # 希沃页面：验证单个文件
+                is_valid, error_msg = PathDetector.validate_target_path(saved_path)
+                if is_valid:
+                    self.target_path = saved_path
+                    return True, f"已加载上次使用的路径: {os.path.basename(saved_path)}"
         
         # 尝试从历史记录中查找有效路径
         history = self.config_manager.get_path_history(self.page)
         for historical_path in history:
-            is_valid, _ = PathDetector.validate_target_path(historical_path)
-            if is_valid:
-                self.target_path = historical_path
-                self.config_manager.set_target_path(historical_path, self.page)
-                return True, f"已从历史记录恢复路径: {os.path.basename(historical_path)}"
+            if self.page == "wps":
+                if os.path.isdir(historical_path) and PathDetector._validate_wps_splash_dir(historical_path):
+                    self.target_path = historical_path
+                    self.config_manager.set_target_path(historical_path, self.page)
+                    file_count = len(PathDetector.get_wps_splash_files(historical_path))
+                    return True, f"已从历史记录恢复WPS启动图目录 ({file_count}个文件)"
+            else:
+                is_valid, _ = PathDetector.validate_target_path(historical_path)
+                if is_valid:
+                    self.target_path = historical_path
+                    self.config_manager.set_target_path(historical_path, self.page)
+                    return True, f"已从历史记录恢复路径: {os.path.basename(historical_path)}"
         
         # 清理无效的历史记录
         self.config_manager.clear_invalid_history(self.page)
@@ -87,13 +122,17 @@ class PathController:
         """静默检测目标路径"""
         if self.page == "wps":
             paths = PathDetector.detect_wps_paths()
+            if paths:
+                self.target_path = paths[0]  # splash目录路径
+                self.config_manager.set_target_path(self.target_path, self.page)
+                file_count = len(PathDetector.get_wps_splash_files(self.target_path))
+                return True, f"检测到WPS启动图目录 ({file_count}个文件)"
         else:
             paths = PathDetector.detect_all_paths()
-        
-        if paths:
-            self.target_path = paths[0]
-            self.config_manager.set_target_path(self.target_path, self.page)
-            return True, f"检测成功: {os.path.basename(self.target_path)}"
+            if paths:
+                self.target_path = paths[0]
+                self.config_manager.set_target_path(self.target_path, self.page)
+                return True, f"检测成功: {os.path.basename(self.target_path)}"
         
         return False, ""
     
@@ -112,15 +151,36 @@ class PathController:
         
         if not paths:
             # 手动选择
-            self.target_path = PathDetector.manual_select_target_image(self.parent, app_type)
-            if self.target_path:
-                is_valid, error_msg = PathDetector.validate_target_path(self.target_path)
-                if is_valid:
-                    self.config_manager.set_target_path(self.target_path, self.page)
-                    return True, f"路径设置成功: {os.path.basename(self.target_path)}"
-                else:
-                    return False, f"选择的路径无效:\n{error_msg}"
-            return False, ""
+            if self.page == "wps":
+                # WPS页面：手动选择splash目录
+                from PyQt6.QtWidgets import QFileDialog
+                dialog = QFileDialog(self.parent, "选择WPS splash目录")
+                dialog.setFileMode(QFileDialog.FileMode.Directory)
+                dialog.setDirectory("C:\\Program Files\\Kingsoft\\WPS Office")
+                
+                if dialog.exec():
+                    selected_dirs = dialog.selectedFiles()
+                    if selected_dirs:
+                        selected_dir = selected_dirs[0]
+                        if PathDetector._validate_wps_splash_dir(selected_dir):
+                            self.target_path = selected_dir
+                            self.config_manager.set_target_path(self.target_path, self.page)
+                            file_count = len(PathDetector.get_wps_splash_files(self.target_path))
+                            return True, f"路径设置成功: WPS启动图目录 ({file_count}个文件)"
+                        else:
+                            return False, "选择的目录不是有效的WPS splash目录\n请选择包含启动图文件的splash目录"
+                return False, ""
+            else:
+                # 希沃页面：手动选择文件
+                self.target_path = PathDetector.manual_select_target_image(self.parent, app_type)
+                if self.target_path:
+                    is_valid, error_msg = PathDetector.validate_target_path(self.target_path)
+                    if is_valid:
+                        self.config_manager.set_target_path(self.target_path, self.page)
+                        return True, f"路径设置成功: {os.path.basename(self.target_path)}"
+                    else:
+                        return False, f"选择的路径无效:\n{error_msg}"
+                return False, ""
         
         # 多个路径让用户选择
         if len(paths) > 1:
@@ -134,7 +194,11 @@ class PathController:
             self.target_path = paths[0]
         
         self.config_manager.set_target_path(self.target_path, self.page)
-        return True, f"检测成功: {os.path.basename(self.target_path)}"
+        if self.page == "wps":
+            file_count = len(PathDetector.get_wps_splash_files(self.target_path))
+            return True, f"检测成功: WPS启动图目录 ({file_count}个文件)"
+        else:
+            return True, f"检测成功: {os.path.basename(self.target_path)}"
     
     def select_from_history(self) -> tuple[bool, str, bool]:
         """从历史记录选择路径
