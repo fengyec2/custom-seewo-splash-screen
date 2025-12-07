@@ -1,4 +1,4 @@
-# SeewoSplash - 希沃白板启动图自定义工具
+# SeewoSplash - 希沃白板/WPS Office 启动图自定义工具
 
 <div align="center">
 
@@ -34,6 +34,7 @@ SeewoSplash 是一个 Fluent 风格的图形化工具，允许你自定义希沃
 
 > [!IMPORTANT]
 > 已经过测试的希沃白板版本: `5.1.12.62976` ~ `5.2.4.9242`
+> 
 > 已经过测试的 WPS Office 版本: `12.1.0.21171`
 
 ### 应用截图
