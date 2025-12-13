@@ -51,7 +51,7 @@ class MainWindow(FluentWindow):
         """初始化管理器"""
         self.config_manager = ConfigManager()
         self.image_manager = ImageManager()
-        self.replacer = ImageReplacer()
+        self.replacer = ImageReplacer(self.config_manager)
     
     def _init_controllers(self):
         """初始化控制器"""
@@ -294,7 +294,8 @@ class MainWindow(FluentWindow):
         self.show_progress("正在替换...")
         success, msg, is_permission_error = self.replacer.replace_image(
             image_info["path"],
-            self.path_ctrl.target_path
+            self.path_ctrl.target_path,
+            self.config_manager
         )
         self.hide_progress()
         
@@ -445,7 +446,8 @@ class MainWindow(FluentWindow):
         self.show_progress(f"正在替换 {len(target_paths)} 个文件...", "wps")
         success, msg, is_permission_error, success_count, failed_count = self.replacer.replace_multiple_images(
             image_info["path"],
-            target_paths
+            target_paths,
+            self.config_manager
         )
         self.hide_progress("wps")
         

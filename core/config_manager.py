@@ -61,7 +61,9 @@ class ConfigManager:
             "theme_mode": "auto",  # 主题模式: light, dark, auto
             "theme_color": "#009FAA",  # 默认主题色（QFluentWidgets 蓝色）
             "use_custom_theme_color": False,  # 是否使用自定义主题色（False表示使用默认颜色）
-            "mica_effect": True  # 云母效果（默认开启）
+            "mica_effect": True,  # 云母效果（默认开启）
+            "file_protection_enabled": False  # 文件保护功能（默认关闭）
+            ,"protected_files": []
         }
     
     def get_target_path(self, page="home"):
@@ -275,6 +277,26 @@ class ConfigManager:
                     img["filename"] = new_filename
                     break
             self.save()
+
+    def get_file_protection_enabled(self):
+        """获取文件保护功能是否启用
+        
+        Returns:
+            bool: 是否启用文件保护
+        """
+        return self.config.get("file_protection_enabled", False)
+
+    def set_file_protection_enabled(self, enabled):
+        """设置文件保护功能
+        
+        Args:
+            enabled (bool): 是否启用文件保护
+        """
+        if isinstance(enabled, bool):
+            self.config["file_protection_enabled"] = enabled
+            self.save()
+        else:
+            print(f"文件保护设置必须为布尔值，收到: {type(enabled)}")
     
     def reset_appearance_settings(self):
         """重置外观设置到默认值"""
@@ -310,3 +332,21 @@ class ConfigManager:
         except Exception as e:
             print(f"导入设置失败: {e}")
             return False
+
+    def get_protected_files(self):
+        """获取已记录的受保护文件路径列表"""
+        return self.config.get("protected_files", [])
+
+    def add_protected_file(self, file_path: str):
+        """将文件路径添加到已保护文件列表并保存"""
+        if "protected_files" not in self.config:
+            self.config["protected_files"] = []
+        if file_path not in self.config["protected_files"]:
+            self.config["protected_files"].append(file_path)
+            self.save()
+
+    def remove_protected_file(self, file_path: str):
+        """从已保护文件列表中移除路径并保存"""
+        if "protected_files" in self.config and file_path in self.config["protected_files"]:
+            self.config["protected_files"].remove(file_path)
+            self.save()

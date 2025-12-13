@@ -1,15 +1,18 @@
 """设置界面"""
 
 import webbrowser
+import os
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget
 from qfluentwidgets import (
     FluentIcon as FIF, SettingCardGroup, OptionsSettingCard, 
-    SwitchSettingCard, PrimaryPushSettingCard, qconfig, setTheme, Theme,
+    SwitchSettingCard, PrimaryPushSettingCard, PushSettingCard,
+    ExpandGroupSettingCard, qconfig, setTheme, Theme,
     TitleLabel, ScrollArea, ExpandLayout, setThemeColor
 )
 
 from core.config_manager import ConfigManager
+from core.file_protector import FileProtector
 from core.app_info import get_version, get_app_name, get_repository
 from utils.system_theme import get_system_theme_color
 from .dialogs import MessageHelper
@@ -22,6 +25,7 @@ class SettingsInterface(ScrollArea):
         super().__init__(parent=parent)
         self.parent_window = parent
         self.config_manager = ConfigManager()
+        self.file_protector = FileProtector()
         self._is_applying_saved_settings = False  # 添加标志
         
         # 创建滚动容器
@@ -112,6 +116,41 @@ class SettingsInterface(ScrollArea):
             parent=self.behavior_group
         )
         self.behavior_group.addSettingCard(self.auto_detect_card)
+        
+        # 启动图保护设置 - 手风琴卡片
+        self.protection_expand_card = ExpandGroupSettingCard(
+            FIF.LIBRARY,
+            "启动图保护",
+            "保护已替换的启动图不被软件还原",
+            parent=self.behavior_group
+        )
+        
+        # 防止图片还原开关
+        self.prevent_restore_card = SwitchSettingCard(
+            FIF.REMOVE_FROM,
+            "防止图片还原",
+            "为替换的图片设置只读+系统+隐藏属性",
+            parent=self.protection_expand_card
+        )
+        self.prevent_restore_card.setChecked(False)  # 默认关闭
+        self.prevent_restore_card.checkedChanged.connect(self._on_prevent_restore_changed)
+        
+        # 立即移除所有保护按钮
+        self.remove_all_protection_card = PushSettingCard(
+            "立即移除",
+            FIF.DELETE,
+            "立即移除所有保护",
+            "移除所有已经设置的文件保护属性",
+            parent=self.protection_expand_card
+        )
+        self.remove_all_protection_card.clicked.connect(self._on_remove_all_protection)
+        
+        # 将子卡片添加到手风琴卡片中
+        self.protection_expand_card.addGroupWidget(self.prevent_restore_card)
+        self.protection_expand_card.addGroupWidget(self.remove_all_protection_card)
+        
+        # 将手风琴卡片添加到行为设置组
+        self.behavior_group.addSettingCard(self.protection_expand_card)
     
     def _create_about_group(self):
         """创建关于设置组"""
@@ -144,6 +183,10 @@ class SettingsInterface(ScrollArea):
         except AttributeError:
             # 如果配置管理器不支持云母效果，使用默认值
             self.mica_card.setChecked(False)
+        
+        # 绑定文件保护设置
+        protect_enabled = self.config_manager.get_file_protection_enabled()
+        self.prevent_restore_card.setChecked(protect_enabled)
     
     def _on_theme_changed(self, item):
         """主题切换事件"""
@@ -192,6 +235,121 @@ class SettingsInterface(ScrollArea):
                     2000
                 )
     
+    def _on_prevent_restore_changed(self, enabled):
+        """防止图片还原开关事件"""
+        # 保存到配置文件
+        self.config_manager.set_file_protection_enabled(enabled)
+        
+        # 显示成功消息（只在非应用保存设置时显示）
+        if not self._is_applying_saved_settings:
+            status = "已启用" if enabled else "已禁用"
+            if self.parent_window:
+                MessageHelper.show_success(
+                    self.parent_window,
+                    f"文件保护{status}",
+                    2000
+                )
+    
+    def _on_remove_all_protection(self):
+        """移除所有保护按钮点击事件"""
+        try:
+            # 获取所有已保护的文件路径
+            protected_files = self._get_all_protected_files()
+            
+            if not protected_files:
+                MessageHelper.show_success(
+                    self.parent_window,
+                    "未发现受保护的文件",
+                    2000
+                )
+                return
+            
+            # 逐个移除保护
+            success_count = 0
+            failed_count = 0
+            
+            for file_path in protected_files:
+                success, msg = self.file_protector.unprotect_file(file_path)
+                if success:
+                    success_count += 1
+                    try:
+                        self.config_manager.remove_protected_file(file_path)
+                    except Exception:
+                        pass
+                else:
+                    failed_count += 1
+            
+            # 显示结果
+            if success_count > 0 and failed_count == 0:
+                MessageHelper.show_success(
+                    self.parent_window,
+                    f"成功移除 {success_count} 个文件的保护",
+                    3000
+                )
+            elif success_count > 0:
+                MessageHelper.show_warning(
+                    self.parent_window,
+                    f"成功移除 {success_count} 个文件的保护，{failed_count} 个失败",
+                    3000
+                )
+            else:
+                MessageHelper.show_error(
+                    self.parent_window,
+                    f"移除保护失败：所有 {len(protected_files)} 个文件都无法处理",
+                    3000
+                )
+                
+        except Exception as e:
+            MessageHelper.show_error(
+                self.parent_window,
+                f"移除保护时出现错误: {str(e)}",
+                3000
+            )
+
+    
+    def _get_all_protected_files(self):
+        """获取所有可能受保护的文件路径"""
+        protected_files = []
+
+        # 先从配置中读取已记录的受保护文件（兼容之前的实现）
+        try:
+            recorded = self.config_manager.get_protected_files()
+            for p in recorded:
+                if p and os.path.exists(p):
+                    protected_files.append(p)
+        except Exception:
+            pass
+
+        # 检查希沃白板路径（作为回退：检查常见文件名）
+        seewo_path = self.config_manager.get_target_path("home")
+        if seewo_path:
+            splash_files = [
+                "splash.png",
+                "splash_screen.png", 
+                "startup.png"
+            ]
+            for filename in splash_files:
+                file_path = f"{seewo_path}\\{filename}"
+                if os.path.exists(file_path) and self.file_protector.is_file_protected(file_path):
+                    if file_path not in protected_files:
+                        protected_files.append(file_path)
+        
+        # 检查WPS路径
+        wps_path = self.config_manager.get_target_path("wps")
+        if wps_path:
+            splash_files = [
+                "splash.png",
+                "splash_screen.png",
+                "startup.png"
+            ]
+            for filename in splash_files:
+                file_path = f"{wps_path}\\{filename}"
+                if os.path.exists(file_path) and self.file_protector.is_file_protected(file_path):
+                    if file_path not in protected_files:
+                        protected_files.append(file_path)
+        
+        return protected_files
+    
     def _on_about_clicked(self):
         """关于按钮点击事件 - 跳转到GitHub"""
         webbrowser.open(get_repository())
@@ -223,6 +381,10 @@ class SettingsInterface(ScrollArea):
             except AttributeError:
                 # 如果配置管理器不支持云母效果配置，跳过
                 pass
+            
+            # 应用文件保护设置（不显示消息）
+            protect_enabled = self.config_manager.get_file_protection_enabled()
+            self.prevent_restore_card.setChecked(protect_enabled)
                 
         finally:
             self._is_applying_saved_settings = False  # 重置标志

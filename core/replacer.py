@@ -10,7 +10,8 @@ from datetime import datetime
 class ImageReplacer:
     """图片替换器 - 增强版文件保护"""
     
-    def __init__(self, backup_dir="backups"):
+    def __init__(self, config_manager=None, backup_dir="backups"):
+        self.config_manager = config_manager
         self.backup_dir = backup_dir
         os.makedirs(backup_dir, exist_ok=True)
     
@@ -110,6 +111,15 @@ class ImageReplacer:
                 pass  # admin_helper 不可用时跳过
             
             if protection_methods:
+                # 记录受保护的文件路径到配置（如果提供了配置管理器）
+                try:
+                    if hasattr(self, 'config_manager') and self.config_manager:
+                        try:
+                            self.config_manager.add_protected_file(filepath)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
                 return True, f"已启用保护: {' + '.join(protection_methods)}"
             else:
                 return False, "保护设置失败"
@@ -143,6 +153,16 @@ class ImageReplacer:
             except Exception:
                 pass  # 系统属性移除失败不影响主要功能
             
+            # 从配置中移除记录（如果提供了配置管理器）
+            try:
+                if hasattr(self, 'config_manager') and self.config_manager:
+                    try:
+                        self.config_manager.remove_protected_file(filepath)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
             return True, "保护已移除"
             
         except Exception as e:
@@ -179,9 +199,14 @@ class ImageReplacer:
         except Exception as e:
             return False, f"无法访问文件: {str(e)}", False
     
-    def replace_image(self, source_path, target_path):
+    def replace_image(self, source_path, target_path, config_manager=None):
         """
-        替换图片并自动启用保护
+        替换图片并根据配置决定是否启用保护
+        
+        Args:
+            source_path: 源图片路径
+            target_path: 目标路径
+            config_manager: 配置管理器实例（可选）
         
         Returns:
             tuple: (成功与否, 消息, 是否为权限问题)
@@ -222,17 +247,29 @@ class ImageReplacer:
             
             # 执行替换
             shutil.copy2(source_path, target_path)
+
+            # 根据配置决定是否启用保护
+            protect_success = False
+            protect_msg = ""
             
-            # 启用增强保护
-            protect_success, protect_msg = self.set_enhanced_protection(target_path)
-            
+            if config_manager and config_manager.get_file_protection_enabled():
+                # 只有在配置启用时才设置保护
+                protect_success, protect_msg = self.set_enhanced_protection(target_path)
+            else:
+                # 配置关闭时不设置保护
+                protect_success = True
+                protect_msg = "保护功能已关闭"
+
             # 构造成功消息
             success_msg = f"替换成功 | {backup_msg}"
-            if protect_success:
-                success_msg += f" | {protect_msg}"
+            if config_manager and config_manager.get_file_protection_enabled():
+                if protect_success:
+                    success_msg += f" | {protect_msg}"
+                else:
+                    success_msg += f" | 警告: {protect_msg}"
             else:
-                success_msg += f" | 警告: {protect_msg}"
-            
+                success_msg += f" | {protect_msg}"
+
             return True, success_msg, False
             
         except PermissionError as e:
@@ -244,37 +281,38 @@ class ImageReplacer:
         except Exception as e:
             return False, f"替换失败: {str(e)}", False
     
-    def replace_multiple_images(self, source_path, target_paths):
+    def replace_multiple_images(self, source_path, target_paths, config_manager=None):
         """
-        批量替换多个图片文件并自动启用保护
+        批量替换多个图片文件并根据配置决定是否启用保护
         
         Args:
             source_path: 源图片路径
             target_paths: 目标文件路径列表
+            config_manager: 配置管理器实例（可选）
             
         Returns:
             tuple: (成功与否, 消息, 是否为权限问题, 成功数量, 失败数量)
         """
         if not os.path.exists(source_path):
             return False, "源图片不存在", False, 0, 0
-        
+
         if not target_paths:
             return False, "目标路径列表为空", False, 0, 0
-        
+
         success_count = 0
         failed_count = 0
         failed_files = []
         permission_error = False
-        
+
         # 逐个替换文件
         for target_path in target_paths:
             if not os.path.exists(target_path):
                 failed_count += 1
                 failed_files.append(os.path.basename(target_path))
                 continue
-            
-            success, msg, is_perm_error = self.replace_image(source_path, target_path)
-            
+
+            success, msg, is_perm_error = self.replace_image(source_path, target_path, config_manager)
+
             if success:
                 success_count += 1
             else:
@@ -282,7 +320,7 @@ class ImageReplacer:
                 failed_files.append(os.path.basename(target_path))
                 if is_perm_error:
                     permission_error = True
-        
+
         # 构造返回消息
         if success_count == len(target_paths):
             # 全部成功
@@ -301,10 +339,10 @@ class ImageReplacer:
                 msg += f"\n失败文件: {', '.join(failed_files[:5])}"
                 if len(failed_files) > 5:
                     msg += f" 等共 {len(failed_files)} 个"
-        
+
         # 如果至少有一个成功，则认为整体成功
         overall_success = success_count > 0
-        
+
         return overall_success, msg, permission_error, success_count, failed_count
     
     def restore_backup(self, target_path):
