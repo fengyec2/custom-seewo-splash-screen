@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QHBoxLayout, QWidget
-from PyQt6.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QHBoxLayout, QWidget
+from PyQt5.QtCore import pyqtSignal
 from qfluentwidgets import PushButton, PrimaryPushButton, FluentIcon as FIF
 
 

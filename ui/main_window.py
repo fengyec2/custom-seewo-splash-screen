@@ -1,9 +1,9 @@
 """主窗口 - 只负责UI组装和事件分发"""
 
 import os
-from PyQt6.QtWidgets import QVBoxLayout, QWidget
-from PyQt6.QtGui import QIcon
-from PyQt6.QtCore import QTimer
+from PyQt5.QtWidgets import QVBoxLayout, QWidget
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import QTimer
 from qfluentwidgets import FluentWindow, FluentIcon as FIF, IndeterminateProgressBar, NavigationItemPosition
 
 from core.config_manager import ConfigManager

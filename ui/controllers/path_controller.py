@@ -1,6 +1,6 @@
 """路径管理控制器 - 处理所有路径相关的业务逻辑"""
 
-from PyQt6.QtWidgets import QWidget
+from PyQt5.QtWidgets import QWidget
 from qfluentwidgets import MessageBoxBase, SubtitleLabel, ComboBox, BodyLabel
 from core.config_manager import ConfigManager
 from utils.path_detector import PathDetector
@@ -153,7 +153,7 @@ class PathController:
             # 手动选择
             if self.page == "wps":
                 # WPS页面：手动选择splash目录
-                from PyQt6.QtWidgets import QFileDialog
+                from PyQt5.QtWidgets import QFileDialog
                 dialog = QFileDialog(self.parent, "选择WPS splash目录")
                 dialog.setFileMode(QFileDialog.FileMode.Directory)
                 

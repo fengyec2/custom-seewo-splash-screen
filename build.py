@@ -61,10 +61,10 @@ class Builder:
             print("✓ PyInstaller 安装完成")
         
         try:
-            import PyQt6
-            print(f"✓ PyQt6 已安装")
+            import PyQt5
+            print(f"✓ PyQt5 已安装")
         except ImportError:
-            print("✗ PyQt6 未安装，请先安装: pip install PyQt6")
+            print("✗ PyQt5 未安装，请先安装: pip install PyQt5")
             sys.exit(1)
         
         print("✓ 依赖检查完成\n")
@@ -177,26 +177,26 @@ class Builder:
         
         # 排除不必要的导入
         excludes = [
-            "PyQt6.QtWebEngineCore",
-            "PyQt6.QtWebEngineWidgets", 
-            "PyQt6.QtWebEngine",
-            "PyQt6.QtMultimedia",
-            "PyQt6.QtMultimediaWidgets",
-            "PyQt6.QtNetwork",
-            "PyQt6.QtSql",
-            "PyQt6.QtTest",
-            "PyQt6.QtDBus",
-            "PyQt6.QtBluetooth",
-            "PyQt6.QtNfc",
-            "PyQt6.QtPositioning",
-            "PyQt6.QtWebChannel",
-            "PyQt6.QtWebSockets",
-            "PyQt6.Qt3DCore",
-            "PyQt6.Qt3DRender",
-            "PyQt6.Qt3DInput",
-            "PyQt6.Qt3DLogic",
-            "PyQt6.Qt3DAnimation",
-            "PyQt6.Qt3DExtras",
+            "PyQt5.QtWebEngineCore",
+            "PyQt5.QtWebEngineWidgets", 
+            "PyQt5.QtWebEngine",
+            "PyQt5.QtMultimedia",
+            "PyQt5.QtMultimediaWidgets",
+            "PyQt5.QtNetwork",
+            "PyQt5.QtSql",
+            "PyQt5.QtTest",
+            "PyQt5.QtDBus",
+            "PyQt5.QtBluetooth",
+            "PyQt5.QtNfc",
+            "PyQt5.QtPositioning",
+            "PyQt5.QtWebChannel",
+            "PyQt5.QtWebSockets",
+            "PyQt5.Qt3DCore",
+            "PyQt5.Qt3DRender",
+            "PyQt5.Qt3DInput",
+            "PyQt5.Qt3DLogic",
+            "PyQt5.Qt3DAnimation",
+            "PyQt5.Qt3DExtras",
             "pyinstaller",
             "setuptools",
         ]

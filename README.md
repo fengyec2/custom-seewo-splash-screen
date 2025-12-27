@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-brightgreen.svg)
-![PyQt6](https://img.shields.io/badge/PyQt-6-green.svg)
+![PyQt5](https://img.shields.io/badge/PyQt-6-green.svg)
 
 一个用于自定义 希沃白板/WPS Office 启动图的简单工具
 
@@ -76,10 +76,10 @@ pip install -r requirements.txt
 
 ```bash
 # 安装轻量版
-pip install PyQt6-Fluent-Widgets
+pip install PyQt5-Fluent-Widgets
 
 # 安装完整版
-pip install "PyQt6-Fluent-Widgets[full]"
+pip install "PyQt5-Fluent-Widgets[full]"
 ```
 
 3. **运行程序**

@@ -1,7 +1,7 @@
 import os
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPixmap, QDragEnterEvent, QDropEvent
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QPixmap, QDragEnterEvent, QDropEvent
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QSizePolicy
 from qfluentwidgets import FlowLayout, CardWidget, SingleDirectionScrollArea, CaptionLabel, ToolTipFilter, ToolTipPosition
 
 
@@ -37,7 +37,7 @@ class ImageCard(CardWidget):
             pixmap = QPixmap(self.img_info["path"])
             if not pixmap.isNull():
                 # 获取设备像素比例来支持高分屏
-                from PyQt6.QtWidgets import QApplication
+                from PyQt5.QtWidgets import QApplication
                 dpr = QApplication.primaryScreen().devicePixelRatio()
                 
                 # 计算实际缩放尺寸
@@ -159,7 +159,7 @@ class ImageListWidget(QWidget):
         self.flow_layout = FlowLayout(self.content_widget, needAni=True)
         
         # 自定义动画
-        from PyQt6.QtCore import QEasingCurve
+        from PyQt5.QtCore import QEasingCurve
         self.flow_layout.setAnimation(250, QEasingCurve.Type.OutQuad)
         
         # 设置间距
@@ -334,5 +334,5 @@ class ImageListWidget(QWidget):
         """窗口大小变化事件"""
         super().resizeEvent(event)
         # 延迟更新内容高度，确保FlowLayout已经重新布局
-        from PyQt6.QtCore import QTimer
+        from PyQt5.QtCore import QTimer
         QTimer.singleShot(10, self._update_content_height)

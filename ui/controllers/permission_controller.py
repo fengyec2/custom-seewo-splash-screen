@@ -1,6 +1,6 @@
 """权限处理控制器"""
 
-from PyQt6.QtWidgets import QWidget
+from PyQt5.QtWidgets import QWidget
 from qfluentwidgets import MessageBox
 from utils.admin_helper import is_admin, request_admin_and_exit
 

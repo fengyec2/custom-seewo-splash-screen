@@ -1,4 +1,4 @@
-from PyQt6.QtCore import Qt
+from PyQt5.QtCore import Qt
 from qfluentwidgets import InfoBar, InfoBarPosition
 
 

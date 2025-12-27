@@ -1,7 +1,7 @@
 """图片操作控制器 - 处理所有图片相关的业务逻辑"""
 
 import os
-from PyQt6.QtWidgets import QWidget, QFileDialog
+from PyQt5.QtWidgets import QWidget, QFileDialog
 from core.config_manager import ConfigManager
 from core.image_manager import ImageManager
 from qfluentwidgets import MessageBoxBase, SubtitleLabel, LineEdit

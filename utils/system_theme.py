@@ -1,7 +1,7 @@
 """系统主题色获取工具 - 跨平台支持"""
 
 import platform
-from PyQt6.QtGui import QColor
+from PyQt5.QtGui import QColor
 
 
 def get_system_theme_color():

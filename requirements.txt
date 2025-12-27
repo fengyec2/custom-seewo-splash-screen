@@ -1,4 +1,7 @@
-PyQt6>=6.6.0
-# 手动安装以指定轻量版或完整版
-# PyQt6-Fluent-Widgets[full]>=1.5.0
-Pillow>=10.0.0
+PyQt5
+Pillow
+
+# 安装轻量版
+# pip install PyQt-Fluent-Widgets -i https://pypi.org/simple/
+# 安装完整版 (支持亚克力组件)
+# pip install "PyQt-Fluent-Widgets[full]" -i https://pypi.org/simple/

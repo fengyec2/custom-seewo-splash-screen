@@ -1,5 +1,5 @@
 import os
-from PyQt6.QtWidgets import QHBoxLayout
+from PyQt5.QtWidgets import QHBoxLayout
 from qfluentwidgets import CardWidget, StrongBodyLabel, PushButton, FluentIcon as FIF, ToolTipFilter, ToolTipPosition
 
 

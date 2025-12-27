@@ -2,8 +2,8 @@
 
 import webbrowser
 import os
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QWidget
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QWidget
 from qfluentwidgets import (
     FluentIcon as FIF, SettingCardGroup, OptionsSettingCard, 
     SwitchSettingCard, PrimaryPushSettingCard, PushSettingCard,
