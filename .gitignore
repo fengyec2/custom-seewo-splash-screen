@@ -183,5 +183,5 @@ cython_debug/
 # custom-seewo-splash-screen
 images/custom/
 backups/
-config.json
+config/
 version_info.txt

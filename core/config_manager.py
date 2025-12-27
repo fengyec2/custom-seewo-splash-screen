@@ -8,19 +8,19 @@ from utils.resource_path import get_app_data_path
 class ConfigManager:
     """配置文件管理器"""
     
-    def __init__(self, config_file="config/config.json"):
-        # 配置文件保存在可执行文件目录（默认与 qfluentwidgets 保持一致：config/config.json）
+    def __init__(self, config_file="config/splash.json"):
+        # 配置文件保存在可执行文件目录（默认与 qfluentwidgets 保持一致：config/）
         self.config_file = get_app_data_path(config_file)
 
         # 兼容性迁移：如果新位置不存在但根目录下存在旧的 config.json，则移动到新位置
-        try:
-            root_config = get_app_data_path(os.path.basename(config_file))
-            if not os.path.exists(self.config_file) and os.path.exists(root_config):
-                os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
-                os.replace(root_config, self.config_file)
-        except Exception as e:
-            # 不要中断启动，仅打印信息
-            print(f"配置迁移失败: {e}")
+        # try:
+        #     root_config = get_app_data_path(os.path.basename(config_file))
+        #     if not os.path.exists(self.config_file) and os.path.exists(root_config):
+        #         os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
+        #         os.replace(root_config, self.config_file)
+        # except Exception as e:
+        #     # 不要中断启动，仅打印信息
+        #     print(f"配置迁移失败: {e}")
 
         self.config = self.load()
     
