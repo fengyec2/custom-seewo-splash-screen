@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-brightgreen.svg)
-![PyQt5](https://img.shields.io/badge/PyQt-6-green.svg)
+![PyQt5](https://img.shields.io/badge/PyQt-5-green.svg)
 
 一个用于自定义 希沃白板/WPS Office 启动图的简单工具
 
@@ -35,7 +35,7 @@ SeewoSplash 是一个 Fluent 风格的图形化工具，允许你自定义希沃
 > [!IMPORTANT]
 > 已经过测试的希沃白板版本: `5.1.12.62976` ~ `5.2.4.9242`
 > 
-> 已经过测试的 WPS Office 版本: `12.1.0.21171`
+> 已经过测试的 WPS Office 版本: `12.1.0.21171` ~ `12.1.0.24034`
 
 ### 应用截图
 
@@ -52,12 +52,15 @@ SeewoSplash 是一个 Fluent 风格的图形化工具，允许你自定义希沃
 2. 下载最新版本的 `SeewoSplash.zip`
 3. 解压后运行 `SeewoSplash.exe` 即可使用
 
+> [!NOTE]
+> 带有 Full 字样的是支持亚克力效果的版本，与 Lite 版只有这个区别
+
 ### 方式二：从源码运行
 
 #### 环境要求
 
 - Python 3.8 +
-- Windows/Linux 操作系统
+- Windows 10 + / Linux 操作系统
 
 #### 安装步骤
 
