@@ -49,22 +49,11 @@ commit_parsers = [
   { message = "^docs", group = "<!-- 3 -->📚 文档更新" },
   { message = "^build", group = "<!-- 4 -->🔧 构建系统" },
   { message = "^ci", group = "<!-- 4 -->🔧 构建系统" },
-  { message = "^refactor\\(clippy\\)", skip = true },
-  { message = "^refactor", skip = true },
-  { message = "^style", skip = true },
-  { message = "^test", skip = true },
-  { message = "^chore\\(release\\): prepare for", skip = true },
-  { message = "^chore\\(deps.*\\)", skip = true },
-  { message = "^chore\\(pr\\)", skip = true },
-  { message = "^chore\\(pull\\)", skip = true },
-  { message = "^chore\\(npm\\).*yarn\\.lock", skip = true },
-  { message = "^chore|^ci", skip = true },
-  { body = ".*security", skip = true },
   { message = "^revert", group = "<!-- 9 -->◀️ 回滚的功能" },
 ]
 skip_tags = ".*"
 conventional_commits = true
-filter_unconventional = true
+filter_unconventional = false
 split_commits = false
 protect_breaking_commits = false
 remote = "origin"
