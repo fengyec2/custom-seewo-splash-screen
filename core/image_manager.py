@@ -48,17 +48,16 @@ class ImageManager:
         # 预设图片的显示名称映射
         if page == "wps":
             preset_names = {
-                "default.png": "默认图片",
-                "minimal.png": "简约风格",
-                "colorful.png": "彩色风格",
-                "professional.png": "专业风格",
+                "default_bg_hdpi.png": "默认 (高DPI)",
+                "default_bg.png": "默认",
+                "sup_default_bg_hdpi.png": "WPS 会员 (高DPI)",
+                "sup_default_bg.png": "WPS 会员",
+                "wps365_default_bg_hdpi.png": "WPS 365 (高DPI)",
+                "wps365_default_bg.png": "WPS 365",
             }
         else:
             preset_names = {
-                "default.png": "默认图片",
-                "minimal.png": "简约风格",
-                "colorful.png": "彩色风格",
-                "professional.png": "专业风格",
+                "splashscreen.png": "默认",
             }
         
         for img_file in preset_dir.glob("*.png"):
