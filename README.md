@@ -207,6 +207,7 @@ A: 为防止启动图被其他应用还原，程序会尝试为其设置"只读+
 ## 联系方式
 
 - Issue: [提交问题](https://github.com/fengyec2/custom-seewo-splash-screen/issues)
+- 图标来源: [FLATICON](https://www.flaticon.com/free-icon/edit_2921197?term=edit&related_id=2921197)
 
 ---
 
