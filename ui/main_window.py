@@ -32,8 +32,16 @@ class MainWindow(FluentWindow):
         # 创建系统主题监听器
         self.themeListener = SystemThemeListener(self)
         
-        # 应用保存的主题设置
+        # 应用保存的主题设置（必须在 show() 之前）
         self.settings_interface.apply_saved_theme()
+        
+        # 现在显示窗口和启动屏幕（主题已应用，不会闪烁）
+        self.splashScreen.raise_()
+        self.show()
+        
+        # 处理事件队列以显示启动屏幕
+        from PyQt5.QtWidgets import QApplication
+        QApplication.processEvents()
         
         # 启动系统主题监听
         self.themeListener.start()
@@ -50,17 +58,11 @@ class MainWindow(FluentWindow):
         self.setWindowIcon(QIcon(get_resource_path("assets/icon.ico")))
         self.resize(900, 650)
         
-        # 创建启动屏幕
+        # 创建启动屏幕（不在此处显示，延迟到主题应用后）
         self.splashScreen = SplashScreen(self.windowIcon(), self)
         self.splashScreen.setIconSize(QSize(106, 106))
-        self.splashScreen.raise_()
         
         self.center_window()
-        self.show()
-        
-        # 处理事件队列以显示启动屏幕
-        from PyQt5.QtWidgets import QApplication
-        QApplication.processEvents()
     
     def _init_managers(self):
         """初始化管理器"""
