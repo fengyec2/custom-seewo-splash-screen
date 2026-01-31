@@ -3,8 +3,8 @@
 import os
 from PyQt5.QtWidgets import QVBoxLayout, QWidget
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QTimer
-from qfluentwidgets import FluentWindow, FluentIcon as FIF, IndeterminateProgressBar, NavigationItemPosition
+from PyQt5.QtCore import QTimer, QSize
+from qfluentwidgets import FluentWindow, FluentIcon as FIF, IndeterminateProgressBar, NavigationItemPosition, SystemThemeListener, SplashScreen
 
 from core.config_manager import ConfigManager
 from core.image_manager import ImageManager
@@ -29,10 +29,14 @@ class MainWindow(FluentWindow):
         self._init_settings_interface()
         self._connect_signals()
         
+        # 创建系统主题监听器
+        self.themeListener = SystemThemeListener(self)
+        
         # 应用保存的主题设置
         self.settings_interface.apply_saved_theme()
         
-        self.show()
+        # 启动系统主题监听
+        self.themeListener.start()
         
         # 延迟加载数据
         QTimer.singleShot(100, self._load_initial_data)
@@ -45,7 +49,18 @@ class MainWindow(FluentWindow):
         self.setWindowTitle("SeewoSplash")
         self.setWindowIcon(QIcon(get_resource_path("assets/icon.ico")))
         self.resize(900, 650)
+        
+        # 创建启动屏幕
+        self.splashScreen = SplashScreen(self.windowIcon(), self)
+        self.splashScreen.setIconSize(QSize(106, 106))
+        self.splashScreen.raise_()
+        
         self.center_window()
+        self.show()
+        
+        # 处理事件队列以显示启动屏幕
+        from PyQt5.QtWidgets import QApplication
+        QApplication.processEvents()
     
     def _init_managers(self):
         """初始化管理器"""
@@ -163,6 +178,10 @@ class MainWindow(FluentWindow):
             MessageHelper.show_success(self, wps_message, 3000)
         else:
             self.wps_path_card.update_path_display("")
+        
+        # 启动屏幕加载完成
+        if hasattr(self, 'splashScreen'):
+            self.splashScreen.finish()
     
     def _check_admin_status(self):
         """检查管理员权限状态"""
@@ -534,3 +553,19 @@ class MainWindow(FluentWindow):
         frame = self.frameGeometry()
         frame.moveCenter(screen.center())
         self.move(frame.topLeft())
+    
+    def resizeEvent(self, e):
+        """处理窗口大小改变事件"""
+        super().resizeEvent(e)
+        # 调整启动屏幕大小
+        if hasattr(self, 'splashScreen'):
+            self.splashScreen.resize(self.size())
+    
+    def closeEvent(self, e):
+        """处理窗口关闭事件"""
+        # 清理系统主题监听器
+        if hasattr(self, 'themeListener'):
+            self.themeListener.terminate()
+            self.themeListener.deleteLater()
+        
+        super().closeEvent(e)
