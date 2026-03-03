@@ -52,7 +52,7 @@ jobs:
           install-only: true
 
       - name: Cache build dependencies (platform specific path)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ runner.os == 'Windows' && '~\\AppData\\Local\\pip\\Cache' || '~/.cache/pip' }}
           key: ${{ runner.os }}-${{ matrix.qfluentwidgets-version }}-build-${{ hashFiles('**/requirements.txt', '**/*.py') }}
