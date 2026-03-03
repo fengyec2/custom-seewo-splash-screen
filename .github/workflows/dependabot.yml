@@ -1,0 +1,14 @@
+# .github/dependabot.yml
+
+version: 2
+updates:
+  # 配置用于 GitHub Actions 的 Dependabot 设置
+  - package-ecosystem: "github-actions" # 关键：指定要更新的生态系统
+    # 指定工作流文件的位置
+    # 设置为 "/" 会检查 `.github/workflows` 目录下的文件
+    directory: "/"
+    schedule:
+      # 检查更新的频率，可以是 "daily", "weekly", 或 "monthly"
+      interval: "weekly"
+      # 可选：指定在一周中的哪一天运行，例如 "wednesday"
+      day: "wednesday" # 参考[citation:4]
