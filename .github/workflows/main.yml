@@ -255,7 +255,7 @@ jobs:
           echo "  Linux: $(ls -1 release-assets/ | grep -c 'linux') 个"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.release_tag }}
           name: ${{ github.event.inputs.release_name || github.event.inputs.release_tag }}
