@@ -47,7 +47,7 @@ jobs:
           cache: 'pip'
 
       - name: Install UPX (for compressing executables)
-        uses: crazy-max/ghaction-upx@v3
+        uses: crazy-max/ghaction-upx@v4
         with:
           install-only: true
 
