@@ -127,7 +127,7 @@ class MainWindow(FluentWindow):
     
     def _init_settings_interface(self):
         """初始化设置界面"""
-        self.settings_interface = SettingsInterface(self)
+        self.settings_interface = SettingsInterface(self, self.config_manager)
         
         # 添加到导航栏底部
         self.addSubInterface(

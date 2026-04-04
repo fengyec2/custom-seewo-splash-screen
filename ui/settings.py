@@ -39,10 +39,10 @@ def apply_saved_appearance_from_config(config_manager):
 class SettingsInterface(ScrollArea):
     """设置界面"""
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, config_manager=None):
         super().__init__(parent=parent)
         self.parent_window = parent
-        self.config_manager = ConfigManager()
+        self.config_manager = config_manager or ConfigManager()
         self.file_protector = FileProtector()
         self._is_applying_saved_settings = False  # 添加标志
         
@@ -328,6 +328,9 @@ class SettingsInterface(ScrollArea):
     def _get_all_protected_files(self):
         """获取所有可能受保护的文件路径"""
         protected_files = []
+
+        # 强制从磁盘重新加载最新配置，以确保获取到最新的保护历史
+        self.config_manager.config = self.config_manager.load()
 
         # 先从配置中读取已记录的受保护文件（兼容之前的实现）
         try:

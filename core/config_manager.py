@@ -8,7 +8,19 @@ from utils.resource_path import get_app_data_path
 class ConfigManager:
     """配置文件管理器"""
     
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(ConfigManager, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
     def __init__(self, config_file="config/splash.json"):
+        if self._initialized:
+            return
+        self._initialized = True
+        
         # 配置文件保存在可执行文件目录（默认与 qfluentwidgets 保持一致：config/）
         self.config_file = get_app_data_path(config_file)
 
@@ -293,7 +305,10 @@ class ConfigManager:
             enabled (bool): 是否启用文件保护
         """
         if isinstance(enabled, bool):
-            self.config["file_protection_enabled"] = enabled
+            # 重新加载配置，确保不会覆盖其他地方写入的 protected_files 记录
+            current_config = self.load()
+            current_config["file_protection_enabled"] = enabled
+            self.config = current_config
             self.save()
         else:
             print(f"文件保护设置必须为布尔值，收到: {type(enabled)}")
@@ -339,14 +354,19 @@ class ConfigManager:
 
     def add_protected_file(self, file_path: str):
         """将文件路径添加到已保护文件列表并保存"""
-        if "protected_files" not in self.config:
-            self.config["protected_files"] = []
-        if file_path not in self.config["protected_files"]:
-            self.config["protected_files"].append(file_path)
+        # 重新加载配置，确保不会覆盖其他地方写入的 protected_files 记录
+        current_config = self.load()
+        if "protected_files" not in current_config:
+            current_config["protected_files"] = []
+        if file_path not in current_config["protected_files"]:
+            current_config["protected_files"].append(file_path)
+            self.config = current_config
             self.save()
 
     def remove_protected_file(self, file_path: str):
         """从已保护文件列表中移除路径并保存"""
-        if "protected_files" in self.config and file_path in self.config["protected_files"]:
-            self.config["protected_files"].remove(file_path)
+        current_config = self.load()
+        if "protected_files" in current_config and file_path in current_config["protected_files"]:
+            current_config["protected_files"].remove(file_path)
+            self.config = current_config
             self.save()
