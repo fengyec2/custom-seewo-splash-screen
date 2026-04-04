@@ -1,4 +1,5 @@
 import os
+import sys
 import glob
 import re
 from qfluentwidgets import MessageBox
@@ -33,6 +34,194 @@ class PathDetector:
                         drives.append(drive_letter)
         
         return drives
+    
+    @staticmethod
+    def _collect_wps_splash_from_base_dirs(base_paths):
+        """在给定的 WPS 安装根目录下查找已验证的 splash 目录。"""
+        splash_dirs = []
+        splash_dir_patterns = [
+            "office6\\mui\\*\\resource\\splash",
+            "office6\\mui\\*\\res\\splash",
+            "office6\\res\\splash",
+            "wps\\res\\splash",
+        ]
+        for base_path in base_paths:
+            if not base_path or not os.path.exists(base_path):
+                continue
+            for pattern in splash_dir_patterns:
+                full_pattern = os.path.join(base_path, pattern)
+                for splash_dir in glob.glob(full_pattern):
+                    if os.path.isdir(splash_dir) and PathDetector._validate_wps_splash_dir(splash_dir):
+                        splash_dirs.append(splash_dir)
+        return splash_dirs
+    
+    @staticmethod
+    def _enum_uninstall_subkeys():
+        """枚举卸载信息子键 (hkey, parent_path, subkey_name)。"""
+        if sys.platform != "win32":
+            return
+        import winreg
+        roots = [
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+            (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+        ]
+        for hkey, parent_path in roots:
+            try:
+                with winreg.OpenKey(hkey, parent_path, 0, winreg.KEY_READ) as key:
+                    i = 0
+                    while True:
+                        try:
+                            subname = winreg.EnumKey(key, i)
+                            i += 1
+                            yield hkey, parent_path, subname
+                        except OSError:
+                            break
+            except OSError:
+                continue
+    
+    @staticmethod
+    def _wps_install_roots_from_registry():
+        """从注册表读取 WPS Office 安装根目录（用于解析 splash 路径）。"""
+        if sys.platform != "win32":
+            return []
+        import winreg
+        roots = []
+        key_specs = [
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Kingsoft\Office\6.0\Common"),
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Kingsoft\Office\6.0\Common"),
+            (winreg.HKEY_CURRENT_USER, r"Software\Kingsoft\Office\6.0\Common"),
+        ]
+        for hkey, subkey in key_specs:
+            try:
+                with winreg.OpenKey(hkey, subkey, 0, winreg.KEY_READ) as k:
+                    for name in ("InstallRoot", "Path"):
+                        try:
+                            val, _ = winreg.QueryValueEx(k, name)
+                            if isinstance(val, str) and val.strip():
+                                roots.append(val.strip().rstrip("\\/"))
+                                break
+                        except OSError:
+                            continue
+            except OSError:
+                continue
+        
+        for hkey, parent_path, subname in PathDetector._enum_uninstall_subkeys():
+            try:
+                with winreg.OpenKey(hkey, f"{parent_path}\\{subname}", 0, winreg.KEY_READ) as k:
+                    try:
+                        display, _ = winreg.QueryValueEx(k, "DisplayName")
+                    except OSError:
+                        continue
+                    if not isinstance(display, str):
+                        continue
+                    dn = display.lower()
+                    if "wps" not in dn:
+                        continue
+                    if not ("office" in dn or "kingsoft" in dn or "金山" in dn):
+                        continue
+                    try:
+                        loc, _ = winreg.QueryValueEx(k, "InstallLocation")
+                        if isinstance(loc, str) and loc.strip():
+                            roots.append(loc.strip().rstrip("\\/"))
+                    except OSError:
+                        pass
+            except OSError:
+                continue
+        
+        out, seen = [], set()
+        for r in roots:
+            if not r or not os.path.exists(r):
+                continue
+            key = os.path.normcase(os.path.normpath(r))
+            if key not in seen:
+                seen.add(key)
+                out.append(r)
+        return out
+    
+    @staticmethod
+    def _seewo_install_bases_from_registry():
+        """从注册表读取希沃白板 EasiNote5 相关安装目录。"""
+        if sys.platform != "win32":
+            return []
+        import winreg
+        bases = []
+        seewo_keys = [
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Seewo\EasiNote5"),
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Seewo\EasiNote5"),
+            (winreg.HKEY_CURRENT_USER, r"Software\Seewo\EasiNote5"),
+        ]
+        for hkey, subkey in seewo_keys:
+            try:
+                with winreg.OpenKey(hkey, subkey, 0, winreg.KEY_READ) as k:
+                    for name in ("InstallPath", "Path", "InstallLocation", "InstallDir", "RootDir"):
+                        try:
+                            val, _ = winreg.QueryValueEx(k, name)
+                            if isinstance(val, str) and val.strip():
+                                bases.append(val.strip().rstrip("\\/"))
+                                break
+                        except OSError:
+                            continue
+            except OSError:
+                continue
+        
+        for hkey, parent_path, subname in PathDetector._enum_uninstall_subkeys():
+            try:
+                with winreg.OpenKey(hkey, f"{parent_path}\\{subname}", 0, winreg.KEY_READ) as k:
+                    try:
+                        display, _ = winreg.QueryValueEx(k, "DisplayName")
+                    except OSError:
+                        continue
+                    if not isinstance(display, str):
+                        continue
+                    dn = display.lower()
+                    if not (
+                        "easinote" in dn
+                        or "希沃白板" in dn
+                        or ("希沃" in dn and "白板" in dn)
+                        or ("seewo" in dn and "easi" in dn)
+                    ):
+                        continue
+                    try:
+                        loc, _ = winreg.QueryValueEx(k, "InstallLocation")
+                        if isinstance(loc, str) and loc.strip():
+                            bases.append(loc.strip().rstrip("\\/"))
+                    except OSError:
+                        pass
+            except OSError:
+                continue
+        
+        out, seen = [], set()
+        for b in bases:
+            if not b or not os.path.exists(b):
+                continue
+            key = os.path.normcase(os.path.normpath(b))
+            if key not in seen:
+                seen.add(key)
+                out.append(b)
+        return out
+    
+    @staticmethod
+    def _collect_seewo_splash_from_install_bases(base_dirs):
+        """在给定的 EasiNote 安装目录下查找 SplashScreen.png。"""
+        paths = []
+        for base_path in base_dirs:
+            if not base_path or not os.path.exists(base_path):
+                continue
+            base_path = base_path.rstrip("\\/")
+            patterns = [
+                os.path.join(base_path, "EasiNote5*", "Main", "Assets", "SplashScreen.png"),
+                os.path.join(base_path, "EasiNote5_*", "Main", "Resources", "Startup", "SplashScreen.png"),
+            ]
+            for pattern in patterns:
+                paths.extend(glob.glob(pattern))
+            for direct in (
+                os.path.join(base_path, "Main", "Assets", "SplashScreen.png"),
+                os.path.join(base_path, "Main", "Resources", "Startup", "SplashScreen.png"),
+            ):
+                if os.path.exists(direct):
+                    paths.append(direct)
+        return paths
     
     @staticmethod
     def detect_banner_paths():
@@ -223,10 +412,27 @@ class PathDetector:
     
     @staticmethod
     def detect_all_paths():
-        """检测所有可能的路径"""
+        """检测所有可能的路径（优先使用注册表中的安装目录解析 SplashScreen，其次为原有扫描逻辑）。"""
         all_paths = []
-        all_paths.extend(PathDetector.detect_banner_paths())
-        all_paths.extend(PathDetector.detect_splashscreen_paths())
+        seen = set()
+
+        def _add(path):
+            if not path:
+                return
+            key = os.path.normcase(os.path.normpath(path))
+            if key not in seen:
+                seen.add(key)
+                all_paths.append(path)
+
+        if sys.platform == "win32":
+            for p in PathDetector._collect_seewo_splash_from_install_bases(
+                PathDetector._seewo_install_bases_from_registry()
+            ):
+                _add(p)
+        for p in PathDetector.detect_banner_paths():
+            _add(p)
+        for p in PathDetector.detect_splashscreen_paths():
+            _add(p)
         return all_paths
     
     @staticmethod
@@ -240,18 +446,28 @@ class PathDetector:
         1. 用户目录：C:\Users\[用户名]\AppData\Local\Kingsoft\WPS Office\[版本号]\office6\mui\[语言]\resource\splash\
         2. Program Files：C:\Program Files\Kingsoft\WPS Office\office6\mui\[语言]\res\splash\
         3. Program Files (x86)：C:\Program Files (x86)\Kingsoft\WPS Office\office6\mui\[语言]\res\splash\
+        
+        优先从注册表（InstallRoot / 卸载项 InstallLocation）解析安装根目录并查找 splash；
+        若未找到则回退到原有的用户目录与盘符扫描逻辑。
         """
         splash_dirs = []
         
-        # 1. 检测用户目录下的WPS路径
+        if sys.platform == "win32":
+            splash_dirs.extend(
+                PathDetector._collect_wps_splash_from_base_dirs(PathDetector._wps_install_roots_from_registry())
+            )
         splash_dirs.extend(PathDetector._detect_wps_user_paths())
-        
-        # 2. 检测Program Files下的WPS路径
         splash_dirs.extend(PathDetector._detect_wps_program_files_paths())
         
-        # 去重并返回第一个找到的splash目录
-        if splash_dirs:
-            return [splash_dirs[0]]  # 返回第一个找到的splash目录
+        seen = set()
+        unique = []
+        for s in splash_dirs:
+            k = os.path.normcase(os.path.normpath(s))
+            if k not in seen:
+                seen.add(k)
+                unique.append(s)
+        if unique:
+            return [unique[0]]
         return []
     
     @staticmethod
@@ -377,9 +593,6 @@ class PathDetector:
         路径格式：C:\Program Files\Kingsoft\WPS Office\office6\mui\[语言]\res\splash\
         或：C:\Program Files\Kingsoft\WPS Office\office6\mui\[语言]\resource\splash\
         """
-        splash_dirs = []
-        
-        # WPS Office可能的安装路径
         possible_base_paths = [
             "C:\\Program Files\\Kingsoft\\WPS Office",
             "C:\\Program Files (x86)\\Kingsoft\\WPS Office",
@@ -387,7 +600,6 @@ class PathDetector:
             "C:\\Program Files (x86)\\WPS Office",
         ]
         
-        # 尝试多个盘符
         for drive_letter in "CDEFGHIJKLMNOPQRSTUVWXYZ":
             possible_base_paths.extend([
                 f"{drive_letter}:\\Program Files\\Kingsoft\\WPS Office",
@@ -396,27 +608,7 @@ class PathDetector:
                 f"{drive_letter}:\\Program Files (x86)\\WPS Office",
             ])
         
-        # WPS可能的splash目录路径模式
-        # 注意：可能是res或resource
-        splash_dir_patterns = [
-            "office6\\mui\\*\\resource\\splash",  # 用户目录格式
-            "office6\\mui\\*\\res\\splash",        # Program Files格式
-            "office6\\res\\splash",
-            "wps\\res\\splash",
-        ]
-        
-        for base_path in possible_base_paths:
-            if os.path.exists(base_path):
-                for pattern in splash_dir_patterns:
-                    full_pattern = os.path.join(base_path, pattern)
-                    found_dirs = glob.glob(full_pattern)
-                    for splash_dir in found_dirs:
-                        if os.path.isdir(splash_dir):
-                            # 验证splash目录是否包含必要的文件
-                            if PathDetector._validate_wps_splash_dir(splash_dir):
-                                splash_dirs.append(splash_dir)
-        
-        return splash_dirs
+        return PathDetector._collect_wps_splash_from_base_dirs(possible_base_paths)
     
     @staticmethod
     def _validate_wps_splash_dir(splash_dir):
