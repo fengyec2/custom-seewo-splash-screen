@@ -1,14 +1,28 @@
+import os
+
 from qfluentwidgets import MessageBox, MessageBoxBase, SubtitleLabel, ComboBox, BodyLabel
 from utils.path_detector import PathDetector
+
+
+def _history_path_valid(path: str, page: str) -> tuple[bool, str]:
+    """校验历史记录项：希沃为 PNG 文件路径，WPS 为 splash 目录路径。"""
+    if page == "wps":
+        if not path or not os.path.isdir(path):
+            return False, "目录不存在或不是文件夹"
+        if not PathDetector._validate_wps_splash_dir(path):
+            return False, "不是有效的 WPS splash 目录"
+        return True, ""
+    return PathDetector.validate_target_path(path)
 
 
 class PathSelectionDialog(MessageBoxBase):
     """历史路径选择对话框"""
     
-    def __init__(self, history: list[str], valid_paths: list[str], parent=None):
+    def __init__(self, history: list[str], valid_paths: list[str], parent=None, page: str = "home"):
         super().__init__(parent)
         self.history = history
         self.valid_paths = valid_paths
+        self.page = page
         
         self.titleLabel = SubtitleLabel('选择历史路径')
         self.infoLabel = BodyLabel(
@@ -19,7 +33,7 @@ class PathSelectionDialog(MessageBoxBase):
         
         # 添加路径选项
         for i, path in enumerate(history):
-            is_valid, error_msg = PathDetector.validate_target_path(path)
+            is_valid, error_msg = _history_path_valid(path, page)
             status = "✓ 有效" if is_valid else f"✗ 无效 ({error_msg})"
             display_text = f"{i+1}. [{status}] {path}"
             self.pathComboBox.addItem(display_text, userData=path)
@@ -40,10 +54,9 @@ class PathSelectionDialog(MessageBoxBase):
     def validate(self):
         """验证选择的路径是否有效"""
         selected_path = self.pathComboBox.currentData()
-        is_valid, error_msg = PathDetector.validate_target_path(selected_path)
+        is_valid, error_msg = _history_path_valid(selected_path, self.page)
         
         if not is_valid:
-            # 显示警告
             w = MessageBox(
                 "路径无效",
                 f"选择的路径已失效：\n{error_msg}\n\n请选择其他路径或重新检测。",
@@ -85,10 +98,10 @@ class PathHistoryDialog:
             w.exec()
             return "", False
         
-        # 验证历史路径
+        # 验证历史路径（WPS 为目录，希沃为 PNG 文件）
         valid_paths = []
         for path in history:
-            is_valid, _ = PathDetector.validate_target_path(path)
+            is_valid, _ = _history_path_valid(path, page)
             if is_valid:
                 valid_paths.append(path)
         
@@ -105,7 +118,7 @@ class PathHistoryDialog:
             return "", False
         
         # 显示路径选择对话框
-        dialog = PathSelectionDialog(history, valid_paths, parent)
+        dialog = PathSelectionDialog(history, valid_paths, parent, page)
         
         if dialog.exec():
             selected_path = dialog.get_selected_path()
