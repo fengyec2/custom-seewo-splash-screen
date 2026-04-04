@@ -14,7 +14,7 @@ from utils.admin_helper import is_admin
 from .widgets import PathInfoCard, ImageListWidget, ActionBar
 from .dialogs import MessageHelper
 from .controllers import PathController, ImageController, PermissionController
-from .settings import SettingsInterface
+from .settings import SettingsInterface, apply_saved_appearance_from_config
 
 
 class MainWindow(FluentWindow):
@@ -24,6 +24,8 @@ class MainWindow(FluentWindow):
         super().__init__()
         self._init_window()
         self._init_managers()
+        # 在创建各子界面前应用深浅色与主题色，避免设置页等控件在默认主题下初始化导致样式错误
+        apply_saved_appearance_from_config(self.config_manager)
         self._init_controllers()
         self._init_ui()
         self._init_settings_interface()
@@ -32,7 +34,7 @@ class MainWindow(FluentWindow):
         # 创建系统主题监听器
         self.themeListener = SystemThemeListener(self)
         
-        # 应用保存的主题设置（必须在 show() 之前）
+        # 应用云母、文件保护等需设置卡片已创建的配置（必须在 show() 之前）
         self.settings_interface.apply_saved_theme()
         
         # 现在显示窗口和启动屏幕（主题已应用，不会闪烁）

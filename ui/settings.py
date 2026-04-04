@@ -3,6 +3,7 @@
 import webbrowser
 import os
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import QWidget
 from qfluentwidgets import (
     FluentIcon as FIF, SettingCardGroup, OptionsSettingCard, 
@@ -16,6 +17,23 @@ from core.file_protector import FileProtector
 from core.app_info import get_version, get_app_name, get_repository
 from utils.system_theme import get_system_theme_color
 from .dialogs import MessageHelper
+
+
+def apply_saved_appearance_from_config(config_manager):
+    """在创建依赖主题的子界面前调用，使全局深浅色与主题色与 splash.json 一致。"""
+    theme_mode = config_manager.get_theme_mode()
+    theme_map = {
+        "light": Theme.LIGHT,
+        "dark": Theme.DARK,
+        "auto": Theme.AUTO,
+    }
+    saved_theme = theme_map.get(theme_mode, Theme.AUTO)
+    setTheme(saved_theme, save=False)
+
+    if config_manager.get_use_custom_theme_color():
+        setThemeColor(QColor(config_manager.get_theme_color()), save=False)
+    else:
+        setThemeColor(get_system_theme_color(), save=False)
 
 
 class SettingsInterface(ScrollArea):
@@ -355,24 +373,10 @@ class SettingsInterface(ScrollArea):
         webbrowser.open(get_repository())
     
     def apply_saved_theme(self):
-        """应用保存的主题设置"""
+        """应用保存的云母、文件保护等（深浅色与主题色已在主窗口创建子界面前通过 apply_saved_appearance_from_config 应用）。"""
         self._is_applying_saved_settings = True  # 设置标志
         
         try:
-            # 应用主题模式
-            theme_mode = self.config_manager.get_theme_mode()
-            theme_map = {
-                "light": Theme.LIGHT,
-                "dark": Theme.DARK,
-                "auto": Theme.AUTO
-            }
-            saved_theme = theme_map.get(theme_mode, Theme.AUTO)
-            setTheme(saved_theme)
-            
-            # 应用系统主题色
-            system_color = get_system_theme_color()
-            setThemeColor(system_color)
-            
             # 应用云母效果（现在不会显示提示消息）
             try:
                 mica_enabled = self.config_manager.get_mica_effect()

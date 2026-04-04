@@ -16,7 +16,7 @@ def main():
     # 创建应用程序
     app = QApplication(sys.argv)
     
-    # 创建并显示主窗口（主题色由设置界面的apply_saved_theme处理）
+    # 创建并显示主窗口（主题与主题色在 MainWindow 中于创建子界面前应用）
     window = MainWindow()
     window.show()
     
