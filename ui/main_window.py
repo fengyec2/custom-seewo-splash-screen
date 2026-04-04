@@ -1,9 +1,9 @@
 """主窗口 - 只负责UI组装和事件分发"""
 
 import os
-from PyQt5.QtWidgets import QVBoxLayout, QWidget
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QTimer, QSize
+from PyQt6.QtWidgets import QVBoxLayout, QWidget
+from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import QTimer, QSize
 from qfluentwidgets import FluentWindow, FluentIcon as FIF, IndeterminateProgressBar, NavigationItemPosition, SystemThemeListener, SplashScreen
 
 from core.config_manager import ConfigManager
@@ -40,7 +40,7 @@ class MainWindow(FluentWindow):
         self.show()
         
         # 处理事件队列以显示启动屏幕
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication
         QApplication.processEvents()
         
         # 启动系统主题监听

@@ -1,7 +1,7 @@
-PyQt5
+PyQt6
 Pillow
 
 # 安装轻量版
-# pip install PyQt-Fluent-Widgets -i https://pypi.org/simple/
+# pip install PyQt6-Fluent-Widgets -i https://pypi.org/simple/
 # 安装完整版 (支持亚克力组件)
-# pip install "PyQt-Fluent-Widgets[full]" -i https://pypi.org/simple/
+# pip install "PyQt6-Fluent-Widgets[full]" -i https://pypi.org/simple/

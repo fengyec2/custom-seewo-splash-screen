@@ -92,13 +92,13 @@ jobs:
       - name: Install QFluentWidgets (Lite Version)
         if: matrix.qfluentwidgets-version == 'lite'
         run: |
-          python -m pip install --upgrade --no-cache-dir PyQt-Fluent-Widgets
+          python -m pip install --upgrade --no-cache-dir PyQt6-Fluent-Widgets
           echo "📦 已安装 QFluentWidgets 轻量版"
 
       - name: Install QFluentWidgets (Full Version)
         if: matrix.qfluentwidgets-version == 'full'
         run: |
-          python -m pip install --upgrade --no-cache-dir "PyQt-Fluent-Widgets[full]"
+          python -m pip install --upgrade --no-cache-dir "PyQt6-Fluent-Widgets[full]"
           echo "📦 已安装 QFluentWidgets 完整版"
 
       - name: Verify QFluentWidgets installation
