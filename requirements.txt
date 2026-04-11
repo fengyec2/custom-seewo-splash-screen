@@ -1,5 +1,5 @@
 PyQt6==6.11.0
-Pillow==12.1.1
+Pillow==12.2.0
 
 # 安装轻量版
 # pip install PyQt6-Fluent-Widgets -i https://pypi.org/simple/
