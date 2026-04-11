@@ -9,6 +9,11 @@ updates:
     directory: "/"
     schedule:
       # 检查更新的频率，可以是 "daily", "weekly", 或 "monthly"
-      interval: "weekly"
+      interval: "monthly"
       # 可选：指定在一周中的哪一天运行，例如 "wednesday"
-      day: "wednesday" # 参考[citation:4]
+      # day: "wednesday" # 参考[citation:4]
+  
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "monthly"
