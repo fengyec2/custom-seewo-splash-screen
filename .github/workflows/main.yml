@@ -1,4 +1,6 @@
 name: Build and Release
+permissions:
+  contents: read
 
 on:
   push:
@@ -235,8 +237,9 @@ jobs:
             fi
             
             # 为文件添加版本、平台和QFluentWidgets版本后缀
-            version_tag="${{ github.event.inputs.release_tag }}"
-            new_name="${file_name%.*}-${version_tag}-${os_suffix}-${qfw_suffix}.zip"
+            # version_tag="${{ github.event.inputs.release_tag }}"
+            # new_name="${file_name%.*}-${version_tag}-${os_suffix}-${qfw_suffix}.zip"
+            new_name="${file_name%.*}-${os_suffix}-${qfw_suffix}.zip"
             
             cp "$file" "release-assets/$new_name"
             echo "📦 准备发布包: $new_name"
