@@ -10,6 +10,9 @@
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-brightgreen.svg)
 ![PyQt6](https://img.shields.io/badge/PyQt-6-green.svg)
+![Version](https://img.shields.io/github/v/release/fengyec2/custom-seewo-splash-screen)
+![Build](https://img.shields.io/github/actions/workflow/status/fengyec2/custom-seewo-splash-screen/main.yml)
+![Downloads](https://img.shields.io/github/downloads/fengyec2/custom-seewo-splash-screen/total)
 
 一个用于自定义 希沃白板/WPS Office 启动图的简单工具
 
