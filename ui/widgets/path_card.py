@@ -97,5 +97,5 @@ class PathInfoCard(CardWidget):
             self.path_label.setText("⚠ 未检测到启动图片路径 (点击右侧按钮进行检测)")
             
             # 设置提示信息的工具提示
-            help_tooltip = "请点击'检测路径'或'历史路径'按��来设置启动图片路径"
+            help_tooltip = "请点击'检测路径'或'历史路径'按钮来设置启动图片路径"
             self._setup_path_label_tooltip(help_tooltip, ToolTipPosition.BOTTOM)
