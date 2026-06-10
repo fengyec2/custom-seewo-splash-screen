@@ -12,8 +12,18 @@ updates:
       interval: "monthly"
       # 可选：指定在一周中的哪一天运行，例如 "wednesday"
       # day: "wednesday" # 参考[citation:4]
+    # open-pull-requests-limit: 5
+    groups:
+      dependencies:
+        patterns:
+          - "*"
   
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "monthly"
+    # open-pull-requests-limit: 5
+    groups:
+      dependencies:
+        patterns:
+          - "*"
