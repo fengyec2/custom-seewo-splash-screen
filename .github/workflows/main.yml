@@ -40,7 +40,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -54,7 +54,7 @@ jobs:
           install-only: true
 
       - name: Cache build dependencies (platform specific path)
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ runner.os == 'Windows' && '~\\AppData\\Local\\pip\\Cache' || '~/.cache/pip' }}
           key: ${{ runner.os }}-${{ matrix.qfluentwidgets-version }}-build-${{ hashFiles('**/requirements.txt', '**/*.py') }}
@@ -146,7 +146,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
