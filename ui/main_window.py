@@ -17,200 +17,157 @@ from .controllers import PathController, ImageController, PermissionController
 from .settings import SettingsInterface, apply_saved_appearance_from_config
 
 
+# 页面配置：[icon, label, page_key]
+PAGES = [
+    {"icon": FIF.HOME, "label": "希沃白板", "key": "home"},
+    {"icon": FIF.DOCUMENT, "label": "WPS Office", "key": "wps"},
+]
+
+
 class MainWindow(FluentWindow):
     """主窗口 - 只负责UI和事件分发"""
-    
+
     def __init__(self):
         super().__init__()
         self._init_window()
         self._init_managers()
-        # 在创建各子界面前应用深浅色与主题色，避免设置页等控件在默认主题下初始化导致样式错误
         apply_saved_appearance_from_config(self.config_manager)
         self._init_controllers()
         self._init_ui()
         self._init_settings_interface()
         self._connect_signals()
-        
-        # 创建系统主题监听器
+
         self.themeListener = SystemThemeListener(self)
-        
-        # 应用云母、文件保护等需设置卡片已创建的配置（必须在 show() 之前）
         self.settings_interface.apply_saved_theme()
-        
-        # 现在显示窗口和启动屏幕（主题已应用，不会闪烁）
+
         self.splashScreen.raise_()
         self.show()
-        
-        # 处理事件队列以显示启动屏幕
+
         from PyQt6.QtWidgets import QApplication
         QApplication.processEvents()
-        
-        # 启动系统主题监听
+
         self.themeListener.start()
-        
-        # 延迟加载数据
         QTimer.singleShot(100, self._load_initial_data)
         QTimer.singleShot(200, self._check_admin_status)
-    
-    def _init_window(self):
-        """初始化窗口属性"""
-        from utils.resource_path import get_resource_path  # 确保导入路径处理模块
 
+    # --- init ---
+
+    def _init_window(self):
+        from utils.resource_path import get_resource_path
         self.setWindowTitle("SeewoSplash")
         self.setWindowIcon(QIcon(get_resource_path("assets/icon.ico")))
         self.resize(900, 650)
-        
-        # 创建启动屏幕（不在此处显示，延迟到主题应用后）
         self.splashScreen = SplashScreen(self.windowIcon(), self)
         self.splashScreen.setIconSize(QSize(106, 106))
-        
         self.center_window()
-    
+
     def _init_managers(self):
-        """初始化管理器"""
         self.config_manager = ConfigManager()
         self.image_manager = ImageManager()
         self.replacer = ImageReplacer(self.config_manager)
-    
-    def _init_controllers(self):
-        """初始化控制器"""
-        # 主页控制器
-        self.path_ctrl = PathController(self, self.config_manager, "home")
-        self.image_ctrl = ImageController(self, self.config_manager, self.image_manager)
         self.permission_ctrl = PermissionController()
-        
-        # WPS页面控制器
-        self.wps_path_ctrl = PathController(self, self.config_manager, "wps")
-        self.wps_image_ctrl = ImageController(self, self.config_manager, self.image_manager)
-    
+
+    def _init_controllers(self):
+        for pg in PAGES:
+            setattr(self, f"{pg['key']}_path_ctrl", PathController(self, self.config_manager, pg["key"]))
+            setattr(self, f"{pg['key']}_image_ctrl", ImageController(self, self.config_manager, self.image_manager))
+
     def _init_ui(self):
-        """初始化主界面UI"""
-        # 主页
-        self.homeInterface = QWidget()
-        self.homeInterface.setObjectName("homeInterface")
-        self.addSubInterface(self.homeInterface, FIF.HOME, '希沃白板')
-        
-        layout = QVBoxLayout(self.homeInterface)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
-        
-        self.path_card = PathInfoCard(self.homeInterface)
-        self.image_list = ImageListWidget(self.homeInterface)
-        self.action_bar = ActionBar(self.homeInterface)
-        self.progress_bar = IndeterminateProgressBar(self.homeInterface)
-        self.progress_bar.setVisible(False)
-        
-        layout.addWidget(self.path_card)
-        layout.addWidget(self.image_list, 1)
-        layout.addWidget(self.action_bar)
-        layout.addWidget(self.progress_bar)
-        
-        # WPS页面
-        self.wpsInterface = QWidget()
-        self.wpsInterface.setObjectName("wpsInterface")
-        self.addSubInterface(self.wpsInterface, FIF.DOCUMENT, 'WPS Office')
-        
-        wps_layout = QVBoxLayout(self.wpsInterface)
-        wps_layout.setContentsMargins(20, 20, 20, 20)
-        wps_layout.setSpacing(15)
-        
-        self.wps_path_card = PathInfoCard(self.wpsInterface)
-        self.wps_image_list = ImageListWidget(self.wpsInterface)
-        self.wps_action_bar = ActionBar(self.wpsInterface)
-        self.wps_progress_bar = IndeterminateProgressBar(self.wpsInterface)
-        self.wps_progress_bar.setVisible(False)
-        
-        wps_layout.addWidget(self.wps_path_card)
-        wps_layout.addWidget(self.wps_image_list, 1)
-        wps_layout.addWidget(self.wps_action_bar)
-        wps_layout.addWidget(self.wps_progress_bar)
-    
+        # 共享布局参数
+        layout_params = {"margins": (20, 20, 20, 20), "spacing": 15}
+
+        for pg in PAGES:
+            key = pg["key"]
+            interface = QWidget()
+            interface.setObjectName(f"{key}Interface")
+            self.addSubInterface(interface, pg["icon"], pg["label"])
+
+            layout = QVBoxLayout(interface)
+            layout.setContentsMargins(*layout_params["margins"])
+            layout.setSpacing(layout_params["spacing"])
+
+            path_card = PathInfoCard(interface)
+            image_list = ImageListWidget(interface)
+            action_bar = ActionBar(interface)
+            progress_bar = IndeterminateProgressBar(interface)
+            progress_bar.setVisible(False)
+
+            layout.addWidget(path_card)
+            layout.addWidget(image_list, 1)
+            layout.addWidget(action_bar)
+            layout.addWidget(progress_bar)
+
+            setattr(self, f"{key}_Interface", interface)
+            setattr(self, f"{key}_path_card", path_card)
+            setattr(self, f"{key}_image_list", image_list)
+            setattr(self, f"{key}_action_bar", action_bar)
+            setattr(self, f"{key}_progress_bar", progress_bar)
+
     def _init_settings_interface(self):
-        """初始化设置界面"""
         self.settings_interface = SettingsInterface(self, self.config_manager)
-        
-        # 添加到导航栏底部
         self.addSubInterface(
-            self.settings_interface,
-            FIF.SETTING,
-            '设置',
+            self.settings_interface, FIF.SETTING, '设置',
             position=NavigationItemPosition.BOTTOM
         )
 
     def _connect_signals(self):
-        """连接信号槽"""
-        # 主页信号
-        self.path_card.detect_button.clicked.connect(self._on_detect_path)
-        self.path_card.history_button.clicked.connect(self._on_show_history)
-        self.image_list.imageSelected.connect(self._on_image_selected)
-        self.image_list.imagesDropped.connect(self._on_images_dropped)
-        self.action_bar.importClicked.connect(self._on_import_image)
-        self.action_bar.renameClicked.connect(self._on_rename_image)
-        self.action_bar.deleteClicked.connect(self._on_delete_image)
-        self.action_bar.replaceClicked.connect(self._on_replace_image)
-        self.action_bar.restoreClicked.connect(self._on_restore_backup)
-        
-        # WPS页面信号
-        self.wps_path_card.detect_button.clicked.connect(self._on_wps_detect_path)
-        self.wps_path_card.history_button.clicked.connect(self._on_wps_show_history)
-        self.wps_image_list.imageSelected.connect(self._on_wps_image_selected)
-        self.wps_image_list.imagesDropped.connect(self._on_wps_images_dropped)
-        self.wps_action_bar.importClicked.connect(self._on_wps_import_image)
-        self.wps_action_bar.renameClicked.connect(self._on_wps_rename_image)
-        self.wps_action_bar.deleteClicked.connect(self._on_wps_delete_image)
-        self.wps_action_bar.replaceClicked.connect(self._on_wps_replace_image)
-        self.wps_action_bar.restoreClicked.connect(self._on_wps_restore_backup)
-    
+        # 构建页面对象映射表，避免 lambda 闭包陷阱
+        pages = {}
+        for pg in PAGES:
+            key = pg["key"]
+            pages[key] = {
+                "card": getattr(self, f"{key}_path_card"),
+                "ilist": getattr(self, f"{key}_image_list"),
+                "abar": getattr(self, f"{key}_action_bar"),
+            }
+
+        for key, els in pages.items():
+            card = els["card"]
+            ilist = els["ilist"]
+            abar = els["abar"]
+
+            # 按钮信号无参数，用 functools.partial 避免闭包陷阱
+            from functools import partial
+            card.detect_button.clicked.connect(partial(self._on_detect_path, key))
+            card.history_button.clicked.connect(partial(self._on_show_history, key))
+            abar.importClicked.connect(partial(self._on_import_image, key))
+            abar.renameClicked.connect(partial(self._on_rename_image, key))
+            abar.deleteClicked.connect(partial(self._on_delete_image, key))
+            abar.replaceClicked.connect(partial(self._on_replace_image, key))
+            abar.restoreClicked.connect(partial(self._on_restore_backup, key))
+            # imageSelected 发射 dict → 需要保留 info 参数
+            ilist.imageSelected.connect(lambda info, k=key: self._on_image_selected(info, k))
+            ilist.imagesDropped.connect(lambda data, k=key: self._on_images_dropped(data, k))
+
+    # --- initial load ---
+
     def _load_initial_data(self):
-        """加载初始数据"""
-        # 加载主页数据
-        self.load_images()
-        success, message = self.path_ctrl.load_and_validate_target_path()
-        if success:
-            self.path_card.update_path_display(self.path_ctrl.target_path)
-            MessageHelper.show_success(self, message, 3000)
-        else:
-            self.path_card.update_path_display("")
-        
-        # 加载WPS页面数据
-        self.load_wps_images()
-        wps_success, wps_message = self.wps_path_ctrl.load_and_validate_target_path()
-        if wps_success:
-            target_paths = self.wps_path_ctrl.get_target_paths()
-            file_count = len(target_paths) if target_paths else None
-            self.wps_path_card.update_path_display(self.wps_path_ctrl.target_path, file_count)
-            MessageHelper.show_success(self, wps_message, 3000)
-        else:
-            self.wps_path_card.update_path_display("")
-        
-        # 启动屏幕加载完成
+        for pg in PAGES:
+            self.load_images(pg["key"])
+            success, message = getattr(self, f"{pg['key']}_path_ctrl").load_and_validate_target_path()
+            card = getattr(self, f"{pg['key']}_path_card")
+            if success:
+                ctrl = getattr(self, f"{pg['key']}_path_ctrl")
+                tp = ctrl.get_target_paths()
+                file_count = len(tp) if tp else None
+                card.update_path_display(ctrl.target_path, file_count)
+                MessageHelper.show_success(self, message, 3000)
+            else:
+                card.update_path_display("")
+
         if hasattr(self, 'splashScreen'):
             self.splashScreen.finish()
-    
-    def _check_admin_status(self):
-        """检查管理员权限状态"""
-        if is_admin():
-            current_title = self.windowTitle()
-            self.setWindowTitle(f"{current_title} [管理员]")
-    
-    # === 事件处理方法 (简洁的分发逻辑) ===
-    
-    def _on_image_selected(self, image_info: dict):
-        """图片选中事件"""
-        self.config_manager.set_last_selected_image(image_info["filename"], "home")
+
+    # --- event handlers (unified per-page) ---
+
+    def _on_image_selected(self, image_info, page="home"):
+        self.config_manager.set_last_selected_image(image_info["filename"], page)
         is_custom = image_info["type"] == "custom"
-        self.action_bar.set_rename_delete_enabled(is_custom)
-    
-    def _on_wps_image_selected(self, image_info: dict):
-        """WPS页面图片选中事件"""
-        self.config_manager.set_last_selected_image(image_info["filename"], "wps")
-        is_custom = image_info["type"] == "custom"
-        self.wps_action_bar.set_rename_delete_enabled(is_custom)
-    
-    def _on_images_dropped(self, drop_data):
-        """图片拖放事件"""
+        getattr(self, f"{page}_action_bar").set_rename_delete_enabled(is_custom)
+
+    def _on_images_dropped(self, drop_data, page="home"):
         file_paths, ignored_files = drop_data
-        
+
         if ignored_files:
             ignored_str = "、".join(ignored_files[:3])
             if len(ignored_files) > 3:
@@ -219,357 +176,226 @@ class MainWindow(FluentWindow):
                 self, "文件格式错误",
                 f"以下文件不是PNG格式，已忽略：\n{ignored_str}"
             )
-        
+
         if not file_paths:
             return
-        
-        self.show_progress(f"正在导入 {len(file_paths)} 个文件...")
-        success_count, failed_files = self.image_ctrl.import_multiple_images(file_paths)
-        self.hide_progress()
-        
+
+        ctrl = getattr(self, f"{page}_image_ctrl")
+        self.show_progress(f"正在导入 {len(file_paths)} 个文件...", page)
+        success_count, failed_files = ctrl.import_multiple_images(file_paths)
+        self.hide_progress(page)
+
         if success_count > 0:
-            MessageHelper.show_success(
-                self,
-                f"成功导入 {success_count} 个图片" + 
-                (f"，{len(failed_files)} 个失败" if failed_files else ""),
-                3000
-            )
-            self.load_images()
-        
+            msg = f"成功导入 {success_count} 个图片"
+            if failed_files:
+                msg += f"，{len(failed_files)} 个失败"
+            MessageHelper.show_success(self, msg, 3000)
+            self.load_images(page)
+
         if failed_files:
-            error_details = "\n".join([f"• {name}: {msg}" for name, msg in failed_files[:5]])
+            error_details = "\n".join(f"• {name}: {msg}" for name, msg in failed_files[:5])
             if len(failed_files) > 5:
                 error_details += f"\n... 还有 {len(failed_files) - 5} 个文件失败"
             MessageHelper.show_error(self, "部分文件导入失败", error_details)
-    
-    def _on_detect_path(self):
-        """检测路径事件"""
-        self.show_progress("正在检测路径...")
-        success, message = self.path_ctrl.detect_with_user_interaction()
-        self.hide_progress()
-        
-        self.path_card.update_path_display(self.path_ctrl.target_path)
+
+    def _on_detect_path(self, page="home"):
+        ctrl = getattr(self, f"{page}_path_ctrl")
+        card = getattr(self, f"{page}_path_card")
+
+        self.show_progress("正在检测路径...", page)
+        success, message = ctrl.detect_with_user_interaction()
+        self.hide_progress(page)
+
+        tp = ctrl.get_target_paths()
+        file_count = len(tp) if tp else None
+        card.update_path_display(ctrl.target_path, file_count)
         if success:
             MessageHelper.show_success(self, message, 5000)
         elif message:
             MessageHelper.show_error(self, "检测失败", message)
-    
-    def _on_show_history(self):
-        """显示历史路径事件"""
-        success, result, need_detect = self.path_ctrl.select_from_history()
+
+    def _on_show_history(self, page="home"):
+        ctrl = getattr(self, f"{page}_path_ctrl")
+        card = getattr(self, f"{page}_path_card")
+
+        success, result, need_detect = ctrl.select_from_history()
         if success:
-            self.path_card.update_path_display(result)
+            tp = ctrl.get_target_paths()
+            file_count = len(tp) if tp else None
+            card.update_path_display(result, file_count)
             MessageHelper.show_success(self, f"已设置目标路径: {os.path.basename(result)}", 5000)
         elif need_detect:
-            self._on_detect_path()
-    
-    def _on_import_image(self):
-        """导入图片事件"""
-        self.show_progress("正在导入...")
-        success, msg, source_path = self.image_ctrl.import_single_image(allow_multiple=True)
-        self.hide_progress()
-        
+            self._on_detect_path(page)
+
+    def _on_import_image(self, page="home"):
+        ctrl = getattr(self, f"{page}_image_ctrl")
+        self.show_progress("正在导入...", page)
+        success, msg, source_path = ctrl.import_single_image(allow_multiple=True)
+        self.hide_progress(page)
+
         if success:
             MessageHelper.show_success(self, f"图片导入成功: {os.path.basename(source_path)}", 3000)
-            self.load_images()
+            self.load_images(page)
         elif msg:
             MessageHelper.show_error(self, "导入失败", msg)
-    
-    def _on_rename_image(self):
-        """重命名图片事件"""
-        image_info = self.image_list.get_selected_image_info()
+
+    def _on_rename_image(self, page="home"):
+        ilist = getattr(self, f"{page}_image_list")
+        image_info = ilist.get_selected_image_info()
         if not image_info:
             MessageHelper.show_warning(self, "未选择图片", "请先选择要重命名的图片")
             return
-        
-        success, msg = self.image_ctrl.rename_image(image_info)
+
+        ctrl = getattr(self, f"{page}_image_ctrl")
+        success, msg = ctrl.rename_image(image_info)
         if success:
             MessageHelper.show_success(self, msg, 2000)
-            self.load_images()
+            self.load_images(page)
         elif msg:
             MessageHelper.show_warning(self, "重命名失败", msg)
-    
-    def _on_delete_image(self):
-        """删除图片事件"""
-        image_info = self.image_list.get_selected_image_info()
+
+    def _on_delete_image(self, page="home"):
+        ilist = getattr(self, f"{page}_image_list")
+        image_info = ilist.get_selected_image_info()
         if not image_info:
             MessageHelper.show_warning(self, "未选择图片", "请先选择要删除的图片")
             return
-        
-        success, msg = self.image_ctrl.delete_image(image_info)
+
+        ctrl = getattr(self, f"{page}_image_ctrl")
+        success, msg = ctrl.delete_image(image_info)
         if success:
             MessageHelper.show_success(self, msg, 2000)
-            self.load_images()
+            self.load_images(page)
         else:
             MessageHelper.show_error(self, "删除失败", msg)
-    
-    def _on_replace_image(self):
-        """替换启动图片事件"""
-        if not self.path_ctrl.target_path:
+
+    def _on_replace_image(self, page="home"):
+        ctrl = getattr(self, f"{page}_path_ctrl")
+        ilist = getattr(self, f"{page}_image_list")
+        replacer = self.replacer
+
+        if not ctrl.target_path:
             MessageHelper.show_warning(self, "未检测到路径", "请先点击'检测路径'按钮")
             return
-        
-        image_info = self.image_list.get_selected_image_info()
+
+        image_info = ilist.get_selected_image_info()
         if not image_info:
             MessageHelper.show_warning(self, "未选择图片", "请先从列表中选择要替换的图片")
             return
-        
-        self.show_progress("正在替换...")
-        success, msg, is_permission_error = self.replacer.replace_image(
-            image_info["path"],
-            self.path_ctrl.target_path,
-            self.config_manager
-        )
-        self.hide_progress()
-        
-        if success:
-            MessageHelper.show_success(self, f"启动图片已替换为: {image_info['display_name']}", 3000)
-        elif is_permission_error:
-            self.permission_ctrl.handle_permission_error(self, msg)
-        else:
-            MessageHelper.show_error(self, "替换失败", msg)
-    
-    def _on_restore_backup(self):
-        """从备份还原事件"""
-        if not self.path_ctrl.target_path:
-            MessageHelper.show_warning(self, "未检测到路径", "请先点击'检测路径'按钮")
-            return
-        
-        self.show_progress("正在还原...")
-        success, msg, is_permission_error = self.replacer.restore_backup(self.path_ctrl.target_path)
-        self.hide_progress()
-        
-        if success:
-            MessageHelper.show_success(self, "已从备份还原启动图片", 3000)
-        elif is_permission_error:
-            self.permission_ctrl.handle_permission_error(self, msg)
-        else:
-            MessageHelper.show_error(self, "还原失败", msg)
-    
-    # === WPS页面事件处理方法 ===
-    
-    def _on_wps_images_dropped(self, drop_data):
-        """WPS页面图片拖放事件"""
-        file_paths, ignored_files = drop_data
-        
-        if ignored_files:
-            ignored_str = "、".join(ignored_files[:3])
-            if len(ignored_files) > 3:
-                ignored_str += f" 等{len(ignored_files)}个文件"
-            MessageHelper.show_warning(
-                self, "文件格式错误",
-                f"以下文件不是PNG格式，已忽略：\n{ignored_str}"
-            )
-        
-        if not file_paths:
-            return
-        
-        self.show_progress(f"正在导入 {len(file_paths)} 个文件...", "wps")
-        success_count, failed_files = self.wps_image_ctrl.import_multiple_images(file_paths)
-        self.hide_progress("wps")
-        
-        if success_count > 0:
-            MessageHelper.show_success(
-                self,
-                f"成功导入 {success_count} 个图片" + 
-                (f"，{len(failed_files)} 个失败" if failed_files else ""),
-                3000
-            )
-            self.load_wps_images()
-        
-        if failed_files:
-            error_details = "\n".join([f"• {name}: {msg}" for name, msg in failed_files[:5]])
-            if len(failed_files) > 5:
-                error_details += f"\n... 还有 {len(failed_files) - 5} 个文件失败"
-            MessageHelper.show_error(self, "部分文件导入失败", error_details)
-    
-    def _on_wps_detect_path(self):
-        """WPS页面检测路径事件"""
-        self.show_progress("正在检测路径...", "wps")
-        success, message = self.wps_path_ctrl.detect_with_user_interaction()
-        self.hide_progress("wps")
-        
-        target_paths = self.wps_path_ctrl.get_target_paths()
-        file_count = len(target_paths) if target_paths else None
-        self.wps_path_card.update_path_display(self.wps_path_ctrl.target_path, file_count)
-        if success:
-            MessageHelper.show_success(self, message, 5000)
-        elif message:
-            MessageHelper.show_error(self, "检测失败", message)
-    
-    def _on_wps_show_history(self):
-        """WPS页面显示历史路径事件"""
-        success, result, need_detect = self.wps_path_ctrl.select_from_history()
-        if success:
-            self.wps_path_ctrl.target_path = result
-            target_paths = self.wps_path_ctrl.get_target_paths()
-            file_count = len(target_paths) if target_paths else None
-            self.wps_path_card.update_path_display(result, file_count)
-            MessageHelper.show_success(self, f"已设置目标路径: {os.path.basename(result)}", 5000)
-        elif need_detect:
-            self._on_wps_detect_path()
-    
-    def _on_wps_import_image(self):
-        """WPS页面导入图片事件"""
-        self.show_progress("正在导入...", "wps")
-        success, msg, source_path = self.wps_image_ctrl.import_single_image(allow_multiple=True)
-        self.hide_progress("wps")
-        
-        if success:
-            MessageHelper.show_success(self, f"图片导入成功: {os.path.basename(source_path)}", 3000)
-            self.load_wps_images()
-        elif msg:
-            MessageHelper.show_error(self, "导入失败", msg)
-    
-    def _on_wps_rename_image(self):
-        """WPS页面重命名图片事件"""
-        image_info = self.wps_image_list.get_selected_image_info()
-        if not image_info:
-            MessageHelper.show_warning(self, "未选择图片", "请先选择要重命名的图片")
-            return
-        
-        success, msg = self.wps_image_ctrl.rename_image(image_info)
-        if success:
-            MessageHelper.show_success(self, msg, 2000)
-            self.load_wps_images()
-        elif msg:
-            MessageHelper.show_warning(self, "重命名失败", msg)
-    
-    def _on_wps_delete_image(self):
-        """WPS页面删除图片事件"""
-        image_info = self.wps_image_list.get_selected_image_info()
-        if not image_info:
-            MessageHelper.show_warning(self, "未选择图片", "请先选择要删除的图片")
-            return
-        
-        success, msg = self.wps_image_ctrl.delete_image(image_info)
-        if success:
-            MessageHelper.show_success(self, msg, 2000)
-            self.load_wps_images()
-        else:
-            MessageHelper.show_error(self, "删除失败", msg)
-    
-    def _on_wps_replace_image(self):
-        """WPS页面替换启动图片事件"""
-        if not self.wps_path_ctrl.target_path:
-            MessageHelper.show_warning(self, "未检测到路径", "请先点击'检测路径'按钮")
-            return
-        
-        image_info = self.wps_image_list.get_selected_image_info()
-        if not image_info:
-            MessageHelper.show_warning(self, "未选择图片", "请先从列表中选择要替换的图片")
-            return
-        
-        # 获取所有需要替换的文件路径
-        target_paths = self.wps_path_ctrl.get_target_paths()
+
+        target_paths = ctrl.get_target_paths()
         if not target_paths:
             MessageHelper.show_warning(self, "未找到启动图文件", "请确保splash目录包含所有必要的启动图文件")
             return
-        
-        self.show_progress(f"正在替换 {len(target_paths)} 个文件...", "wps")
-        success, msg, is_permission_error, success_count, failed_count = self.replacer.replace_multiple_images(
-            image_info["path"],
-            target_paths,
-            self.config_manager
-        )
-        self.hide_progress("wps")
-        
-        if success:
-            if success_count == len(target_paths):
-                MessageHelper.show_success(self, f"启动图片已替换为: {image_info['display_name']}\n成功替换 {success_count} 个文件", 4000)
-            else:
-                MessageHelper.show_warning(self, f"部分替换成功\n{msg}", 5000)
-        elif is_permission_error:
-            self.permission_ctrl.handle_permission_error(self, msg)
-        else:
-            MessageHelper.show_error(self, "替换失败", msg)
-    
-    def _on_wps_restore_backup(self):
-        """WPS页面从备份还原事件"""
-        if not self.wps_path_ctrl.target_path:
-            MessageHelper.show_warning(self, "未检测到路径", "请先点击'检测路径'按钮")
-            return
-        
-        # 获取所有需要还原的文件路径
-        target_paths = self.wps_path_ctrl.get_target_paths()
-        if not target_paths:
-            MessageHelper.show_warning(self, "未找到启动图文件", "请确保splash目录包含所有必要的启动图文件")
-            return
-        
-        self.show_progress(f"正在还原 {len(target_paths)} 个文件...", "wps")
-        success, msg, is_permission_error, success_count, failed_count = self.replacer.restore_multiple_backups(target_paths)
-        self.hide_progress("wps")
-        
-        if success:
-            if success_count == len(target_paths):
-                MessageHelper.show_success(self, f"已从备份还原启动图片\n成功还原 {success_count} 个文件", 4000)
-            else:
-                MessageHelper.show_warning(self, f"部分还原成功\n{msg}", 5000)
-        elif is_permission_error:
-            self.permission_ctrl.handle_permission_error(self, msg)
-        else:
-            MessageHelper.show_error(self, "还原失败", msg)
-    
-    # === 辅助方法 ===
-    
-    def show_progress(self, message: str, page="home"):
-        """显示进度"""
+
+        # WPS 用批量，希沃走单文件
         if page == "wps":
-            self.wps_progress_bar.setVisible(True)
-            self.wps_progress_bar.start()
+            self.show_progress(f"正在替换 {len(target_paths)} 个文件...", page)
+            success, msg, is_perm_error, sc, fc = replacer.replace_multiple_images(
+                image_info["path"], target_paths, self.config_manager
+            )
+            self.hide_progress(page)
+
+            if success:
+                if sc == len(target_paths):
+                    MessageHelper.show_success(self, f"启动图片已替换为: {image_info['display_name']}\n成功替换 {sc} 个文件", 4000)
+                else:
+                    MessageHelper.show_warning(self, f"部分替换成功\n{msg}", 5000)
+            elif is_perm_error:
+                self.permission_ctrl.handle_permission_error(self, msg)
+            else:
+                MessageHelper.show_error(self, "替换失败", msg)
         else:
-            self.progress_bar.setVisible(True)
-            self.progress_bar.start()
+            self.show_progress("正在替换...", page)
+            success, msg, is_perm_error = replacer.replace_image(
+                image_info["path"], ctrl.target_path, self.config_manager
+            )
+            self.hide_progress(page)
+
+            if success:
+                MessageHelper.show_success(self, f"启动图片已替换为: {image_info['display_name']}", 3000)
+            elif is_perm_error:
+                self.permission_ctrl.handle_permission_error(self, msg)
+            else:
+                MessageHelper.show_error(self, "替换失败", msg)
+
+    def _on_restore_backup(self, page="home"):
+        ctrl = getattr(self, f"{page}_path_ctrl")
+        replacer = self.replacer
+
+        if not ctrl.target_path:
+            MessageHelper.show_warning(self, "未检测到路径", "请先点击'检测路径'按钮")
+            return
+
+        target_paths = ctrl.get_target_paths()
+        if not target_paths:
+            MessageHelper.show_warning(self, "未找到启动图文件", "请确保splash目录包含所有必要的启动图文件")
+            return
+
+        if page == "wps":
+            self.show_progress(f"正在还原 {len(target_paths)} 个文件...", page)
+            success, msg, is_perm_error, sc, fc = replacer.restore_multiple_backups(target_paths)
+            self.hide_progress(page)
+
+            if success:
+                if sc == len(target_paths):
+                    MessageHelper.show_success(self, f"已从备份还原启动图片\n成功还原 {sc} 个文件", 4000)
+                else:
+                    MessageHelper.show_warning(self, f"部分还原成功\n{msg}", 5000)
+            elif is_perm_error:
+                self.permission_ctrl.handle_permission_error(self, msg)
+            else:
+                MessageHelper.show_error(self, "还原失败", msg)
+        else:
+            self.show_progress("正在还原...", page)
+            success, msg, is_perm_error = replacer.restore_backup(ctrl.target_path)
+            self.hide_progress(page)
+
+            if success:
+                MessageHelper.show_success(self, "已从备份还原启动图片", 3000)
+            elif is_perm_error:
+                self.permission_ctrl.handle_permission_error(self, msg)
+            else:
+                MessageHelper.show_error(self, "还原失败", msg)
+
+    # --- helpers ---
+
+    def show_progress(self, message: str, page="home"):
+        getattr(self, f"{page}_progress_bar").setVisible(True)
+        getattr(self, f"{page}_progress_bar").start()
         MessageHelper.show_success(self, message, 2000)
 
     def hide_progress(self, page="home"):
-        """隐藏进度"""
-        if page == "wps":
-            self.wps_progress_bar.stop()
-            self.wps_progress_bar.setVisible(False)
-        else:
-            self.progress_bar.stop()
-            self.progress_bar.setVisible(False)
-    
-    def load_images(self):
-        """加载图片列表"""
-        preset_images = self.image_manager.get_preset_images("home")
+        getattr(self, f"{page}_progress_bar").stop()
+        getattr(self, f"{page}_progress_bar").setVisible(False)
+
+    def load_images(self, page="home"):
+        preset_images = self.image_manager.get_preset_images(page)
         custom_images = self.image_manager.get_custom_images()
-        self.image_list.load_images(preset_images, custom_images)
-        
-        last_selected = self.config_manager.get_last_selected_image("home")
+        getattr(self, f"{page}_image_list").load_images(preset_images, custom_images)
+
+        last_selected = self.config_manager.get_last_selected_image(page)
         if last_selected:
-            self.image_list.select_image_by_filename(last_selected)
-    
-    def load_wps_images(self):
-        """加载WPS页面图片列表"""
-        preset_images = self.image_manager.get_preset_images("wps")
-        custom_images = self.image_manager.get_custom_images()
-        self.wps_image_list.load_images(preset_images, custom_images)
-        
-        last_selected = self.config_manager.get_last_selected_image("wps")
-        if last_selected:
-            self.wps_image_list.select_image_by_filename(last_selected)
+            getattr(self, f"{page}_image_list").select_image_by_filename(last_selected)
+
+    def _check_admin_status(self):
+        if is_admin():
+            current_title = self.windowTitle()
+            self.setWindowTitle(f"{current_title} [管理员]")
 
     def center_window(self):
-        """将窗口移动到屏幕中心"""
         screen = self.screen().availableGeometry()
         frame = self.frameGeometry()
         frame.moveCenter(screen.center())
         self.move(frame.topLeft())
-    
+
     def resizeEvent(self, e):
-        """处理窗口大小改变事件"""
         super().resizeEvent(e)
-        # 调整启动屏幕大小
         if hasattr(self, 'splashScreen'):
             self.splashScreen.resize(self.size())
-    
+
     def closeEvent(self, e):
-        """处理窗口关闭事件"""
-        # 清理系统主题监听器
         if hasattr(self, 'themeListener'):
             self.themeListener.terminate()
             self.themeListener.deleteLater()
-        
         super().closeEvent(e)
