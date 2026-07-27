@@ -1,9 +1,6 @@
-# file: core/file_protector.py
-
 import os
 import stat
 import ctypes
-import ctypes.wintypes
 from pathlib import Path
 
 
@@ -172,22 +169,9 @@ class FileProtector:
             return False, "系统保护移除出错"
     
     def _restrict_access_permissions(self, file_path: str) -> tuple[bool, str]:
-        """限制文件访问权限（需要管理员权限）"""
-        try:
-            from utils.admin_helper import is_admin
-            if not is_admin():
-                return False, "需要管理员权限"
-            
-            # 这里可以实现更复杂的ACL权限控制
-            # 由于复杂性，暂时返回成功（实际项目中可以实现）
-            return True, "权限控制已设置"
-        except:
-            return False, "权限控制设置失败"
+        """限制文件访问权限（需管理员权限）— 当前未实现实际逻辑"""
+        return False, "需要管理员权限"
     
     def _restore_access_permissions(self, file_path: str) -> tuple[bool, str]:
-        """恢复正常访问权限"""
-        try:
-            # 这里实现权限恢复逻辑
-            return True, "权限已恢复"
-        except:
-            return False, "权限恢复失败"
+        """恢复正常访问权限 — 当前无逻辑"""
+        return True, "权限已恢复"

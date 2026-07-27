@@ -48,10 +48,5 @@ def get_app_data_path(relative_path=""):
 
 
 def ensure_dir(path):
-    """
-    确保目录存在，如果不存在则创建
-    
-    Args:
-        path: 目录路径
-    """
+    """确保目录存在（薄封装）"""
     os.makedirs(path, exist_ok=True)

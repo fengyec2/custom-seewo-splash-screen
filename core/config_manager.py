@@ -8,32 +8,9 @@ from utils.resource_path import get_app_data_path
 class ConfigManager:
     """配置文件管理器"""
     
-    _instance = None
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super(ConfigManager, cls).__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
-    
     def __init__(self, config_file="config/splash.json"):
-        if self._initialized:
-            return
-        self._initialized = True
-        
         # 配置文件保存在可执行文件目录（默认与 qfluentwidgets 保持一致：config/）
         self.config_file = get_app_data_path(config_file)
-
-        # 兼容性迁移：如果新位置不存在但根目录下存在旧的 config.json，则移动到新位置
-        # try:
-        #     root_config = get_app_data_path(os.path.basename(config_file))
-        #     if not os.path.exists(self.config_file) and os.path.exists(root_config):
-        #         os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
-        #         os.replace(root_config, self.config_file)
-        # except Exception as e:
-        #     # 不要中断启动，仅打印信息
-        #     print(f"配置迁移失败: {e}")
-
         self.config = self.load()
     
     def load(self):
@@ -74,8 +51,8 @@ class ConfigManager:
             "theme_color": "#009FAA",  # 默认主题色（QFluentWidgets 蓝色）
             "use_custom_theme_color": False,  # 是否使用自定义主题色（False表示使用默认颜色）
             "mica_effect": True,  # 云母效果（默认开启）
-            "file_protection_enabled": False  # 文件保护功能（默认关闭）
-            ,"protected_files": []
+            "file_protection_enabled": False,
+            "protected_files": []
         }
     
     def get_target_path(self, page="home"):

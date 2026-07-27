@@ -112,14 +112,11 @@ class ImageReplacer:
             
             if protection_methods:
                 # 记录受保护的文件路径到配置（如果提供了配置管理器）
-                try:
-                    if hasattr(self, 'config_manager') and self.config_manager:
-                        try:
-                            self.config_manager.add_protected_file(filepath)
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
+                if self.config_manager:
+                    try:
+                        self.config_manager.add_protected_file(filepath)
+                    except Exception:
+                        pass
                 return True, f"已启用保护: {' + '.join(protection_methods)}"
             else:
                 return False, "保护设置失败"
@@ -154,14 +151,11 @@ class ImageReplacer:
                 pass  # 系统属性移除失败不影响主要功能
             
             # 从配置中移除记录（如果提供了配置管理器）
-            try:
-                if hasattr(self, 'config_manager') and self.config_manager:
-                    try:
-                        self.config_manager.remove_protected_file(filepath)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+            if self.config_manager:
+                try:
+                    self.config_manager.remove_protected_file(filepath)
+                except Exception:
+                    pass
 
             return True, "保护已移除"
             
@@ -236,10 +230,8 @@ class ImageReplacer:
                 return False, backup_msg, backup_perm_error
             
             # 移除只读属性（为了替换）
-            original_readonly = False
             try:
                 if not os.access(target_path, os.W_OK):
-                    original_readonly = True
                     if not self.remove_readonly(target_path):
                         return False, "无法移除只读属性", True
             except Exception as e:
@@ -384,10 +376,8 @@ class ImageReplacer:
         
         try:
             # 移除只读属性（为了还原）
-            original_readonly = False
             try:
                 if not os.access(target_path, os.W_OK):
-                    original_readonly = True
                     if not self.remove_readonly(target_path):
                         return False, "无法移除只读属性", True
             except Exception as e:

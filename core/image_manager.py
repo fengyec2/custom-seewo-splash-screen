@@ -19,13 +19,6 @@ class ImageManager:
         # 确保自定义目录存在
         ensure_dir(self.custom_dir)
         
-        print(f"[DEBUG] 预设图片目录: {self.preset_dir}")
-        print(f"[DEBUG] 预设图片目录存在: {self.preset_dir.exists()}")
-        print(f"[DEBUG] WPS预设图片目录: {self.wps_preset_dir}")
-        print(f"[DEBUG] WPS预设图片目录存在: {self.wps_preset_dir.exists()}")
-        print(f"[DEBUG] 自定义图片目录: {self.custom_dir}")
-        print(f"[DEBUG] 自定义图片目录存在: {self.custom_dir.exists()}")
-        
         # 从配置加载自定义图片信息
         from core.config_manager import ConfigManager
         self.config_manager = ConfigManager()
@@ -72,7 +65,6 @@ class ImageManager:
                 "path": str(img_file),
                 "type": "preset"
             })
-            print(f"[DEBUG] 找到预设图片: {img_file.name}")
         
         return sorted(preset_images, key=lambda x: x["filename"])
     
@@ -81,8 +73,6 @@ class ImageManager:
         custom_images = []
         
         if not self.custom_dir.exists():
-            print(f"[DEBUG] 自定义图片目录不存在，创建中...")
-            ensure_dir(self.custom_dir)
             return custom_images
         
         # 从配置读取自定义图片的显示名称
@@ -97,7 +87,6 @@ class ImageManager:
                 "path": str(img_file),
                 "type": "custom"
             })
-            print(f"[DEBUG] 找到自定义图片: {img_file.name}")
         
         return sorted(custom_images, key=lambda x: x["filename"])
     

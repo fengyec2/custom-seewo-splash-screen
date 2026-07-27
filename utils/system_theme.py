@@ -14,11 +14,8 @@ def get_system_theme_color():
     
     if system == "Windows":
         return _get_windows_theme_color()
-    elif system == "Linux":
-        return _get_linux_theme_color()
-    else:
-        # macOS 或其他系统，返回默认颜色
-        return QColor("#009FAA")
+    # macOS 或其他系统，返回默认颜色
+    return QColor("#009FAA")
 
 
 def _get_windows_theme_color():
@@ -93,57 +90,4 @@ def _get_windows_theme_color():
     return QColor("#009FAA")
 
 
-def _get_linux_theme_color():
-    """获取Linux系统主题色
-    
-    Returns:
-        QColor: Linux系统主题色，如果无法获取则返回默认颜色
-    """
-    try:
-        import subprocess
-        import os
-        
-        # 方法1: 尝试从 GTK 主题获取
-        # 检查是否在 GTK 环境中
-        if os.environ.get("XDG_CURRENT_DESKTOP"):
-            try:
-                # 尝试使用 gsettings (GNOME)
-                result = subprocess.run(
-                    ["gsettings", "get", "org.gnome.desktop.interface", "gtk-theme"],
-                    capture_output=True,
-                    text=True,
-                    timeout=2
-                )
-                if result.returncode == 0:
-                    # 如果成功，尝试获取主题色
-                    # 注意：GTK主题色通常需要解析主题文件，这里简化处理
-                    # 可以尝试读取 ~/.config/gtk-3.0/gtk.css 或类似文件
-                    pass
-            except (subprocess.TimeoutExpired, FileNotFoundError):
-                pass
-        
-        # 方法2: 尝试从 KDE 配置获取
-        try:
-            kde_config = os.path.expanduser("~/.config/kdeglobals")
-            if os.path.exists(kde_config):
-                # 可以解析 KDE 配置文件获取主题色
-                # 这里简化处理，返回默认颜色
-                pass
-        except Exception:
-            pass
-        
-        # 方法3: 尝试从环境变量获取
-        # 某些桌面环境可能设置主题色相关的环境变量
-        theme_color_env = os.environ.get("GTK_THEME_COLOR") or os.environ.get("QT_THEME_COLOR")
-        if theme_color_env:
-            try:
-                return QColor(theme_color_env)
-            except ValueError:
-                pass
-        
-    except Exception as e:
-        print(f"获取Linux主题色失败: {e}")
-    
-    # 如果所有方法都失败，返回默认颜色
-    return QColor("#009FAA")
 

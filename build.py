@@ -243,15 +243,6 @@ class Builder:
             dir_path.mkdir(parents=True, exist_ok=True)
             print(f"✓ 创建目录: {dir_path.relative_to(self.dist_dir)}")
         
-        # # 创建版本信息文件
-        # version_file = exe_dir / "VERSION.txt"
-        # with open(version_file, "w", encoding="utf-8") as f:
-        #     f.write(f"{self.app_name} v{self.version}\n")
-        #     f.write(f"作者: {self.author}\n")
-        #     f.write(f"构建时间: {self._get_build_time()}\n")
-        
-        # print(f"✓ 创建版本信息: {version_file.relative_to(self.dist_dir)}")
-        
         # 验证预设图片是否正确复制
         preset_dir = exe_dir / "_internal" / "assets" / "presets"
         if preset_dir.exists():
@@ -268,37 +259,7 @@ class Builder:
         """获取构建时间"""
         from datetime import datetime
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    def verify_version_info(self):
-        """验证版本信息是否写入成功"""
-        print("=" * 60)
-        print("步骤 8: 验证版本信息...")
-        print("=" * 60)
-        
-        exe_path = self.dist_dir / self.app_name / f"{self.app_name}.exe"
-        
-        if not exe_path.exists():
-            print(f"✗ 可执行文件不存在: {exe_path}")
-            return
-        
-        print(f"✓ 可执行文件: {exe_path}")
-        print(f"\n如何查看版本信息:")
-        print(f"  1. 右键点击 {self.app_name}.exe")
-        print(f"  2. 选择 '属性'")
-        print(f"  3. 切换到 '详细信息' 标签页")
-        print(f"  4. 查看文件版本、产品名称、版权等信息")
-        print(f"\n预期显示:")
-        print(f"  文件描述: 希沃白板启动图片自定义工具")
-        print(f"  产品名称: {self.app_name}")
-        print(f"  产品版本: {self.version}")
-        print(f"  版权: Copyright © {self._get_current_year()} {self.author}")
-        print()
-    
-    def _get_current_year(self):
-        """获取当前年份"""
-        from datetime import datetime
-        return datetime.now().year
-    
+
     def show_result(self):
         """显示打包结果"""
         print("=" * 60)
@@ -328,7 +289,6 @@ class Builder:
             print(f"\n目录结构:")
             print(f"{self.app_name}/")
             print(f"├── {self.app_name}.exe           # 主程序（包含版本信息）")
-            # print(f"├── VERSION.txt                   # 版本信息文本")
             print(f"├── _internal/                    # 运行时依赖（不要删除）")
             print(f"│   └── assets/")
             print(f"│       └── presets/              # 预设图片（只读）")
@@ -388,7 +348,6 @@ class Builder:
             self.create_version_file()  # 新增：生成版本信息文件
             self.build()
             self.post_build()
-            self.verify_version_info()  # 新增：验证版本信息
             self.show_result()
             self.create_zip()
             

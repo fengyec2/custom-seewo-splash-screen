@@ -13,13 +13,8 @@ def is_admin():
         return False
 
 
-def run_as_admin():
-    """
-    请求以管理员权限重启程序
-    
-    Returns:
-        bool: 是否成功请求重启
-    """
+def _run_as_admin():
+    """请求以管理员权限重启程序（私有函数）"""
     try:
         if sys.argv[0].endswith('.py'):
             # 如果是Python脚本
@@ -55,6 +50,6 @@ def run_as_admin():
 
 def request_admin_and_exit():
     """请求管理员权限并退出当前进程"""
-    if run_as_admin():
+    if _run_as_admin():
         sys.exit(0)
     return False
